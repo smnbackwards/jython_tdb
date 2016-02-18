@@ -1,15 +1,28 @@
-// Copyright (c) Corporation for National Research Initiatives
 package org.python.core;
+/**
+ * Created by dual- on 2/18/2016.
+ */
+public class TdbTraceFunction extends PythonTraceFunction {
+    private static long instructionCount = 0;
 
-
-class PythonTraceFunction extends TraceFunction implements Traverseproc {
-
-    PyObject tracefunc;
-
-    PythonTraceFunction(PyObject tracefunc) {
-        this.tracefunc = tracefunc;
+    TdbTraceFunction(PyObject tracefunc) {
+        super(tracefunc);
     }
 
+    public void incInstructionCount(PyFrame frame){
+        instructionCount += 1;
+        System.out.println(instructionCount);
+    }
+
+    public static void resetInstructionCount(){
+        instructionCount = 0;
+    }
+
+    public static long getInstructionCount(){
+        return instructionCount;
+    }
+
+    @Override
     protected TraceFunction safeCall(PyFrame frame, String label, PyObject arg) {
         synchronized(imp.class) {
             synchronized(this) {
@@ -21,6 +34,7 @@ class PythonTraceFunction extends TraceFunction implements Traverseproc {
                 PyObject ret = null;
                 try {
                     ts.tracing = true;
+                    incInstructionCount(frame);
                     ret = tracefunc.__call__(frame, new PyString(label), arg);
                 } catch(PyException exc) {
                     frame.tracefunc = null;
@@ -34,7 +48,7 @@ class PythonTraceFunction extends TraceFunction implements Traverseproc {
                     return this;
                 if(ret == Py.None)
                     return null;
-                return new PythonTraceFunction(ret);
+                return new TdbTraceFunction(ret);
             }
         }
     }
@@ -56,17 +70,5 @@ class PythonTraceFunction extends TraceFunction implements Traverseproc {
         PyObject safeTraceback = exc.traceback == null ? Py.None : exc.traceback;
         return safeCall(frame, "exception",
                 new PyTuple(exc.type, exc.value, safeTraceback));
-    }
-
-
-    /* Traverseproc implementation */
-    @Override
-    public int traverse(Visitproc visit, Object arg) {
-        return tracefunc == null ? 0 : visit.visit(tracefunc, arg);
-    }
-
-    @Override
-    public boolean refersDirectlyTo(PyObject ob) {
-        return ob != null && ob == tracefunc;
     }
 }

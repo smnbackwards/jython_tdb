@@ -65,6 +65,7 @@ public class Setup
         "time:org.python.modules.time.Time",
         "ucnhash",
         "zipimport:org.python.modules.zipimport.zipimport",
-        PosixModule.getOSName() + ":org.python.modules.posix.PosixModule"
+        PosixModule.getOSName() + ":org.python.modules.posix.PosixModule",
+        "_tdb"
     };
 }
