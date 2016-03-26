@@ -59,6 +59,41 @@ class Tdb(pdb.Pdb):
         else :
             print "Can't step to instruction %s because it is negative"%(step_to)
 
+    def do_rreturn(self, arg):
+        self.stop_ic = _tdb.get_return_instruction()
+        print "Returning back to instruction", self.stop_ic
+        try:
+            self.do_restart(None)
+        except Restart:
+            raise ReExecute
+
+    def do_dumb(self, args):
+        print "dumbo"
+        raise ReExecute
+
+    def dispatch_call(self, frame, arg):
+        # XXX 'arg' is no longer used
+        if self.botframe is None:
+            # First call of dispatch since reset()
+            self.botframe = frame.f_back # (CT) Note that this may also be None!
+            return self.trace_dispatch
+        # if not (self.stop_here(frame) or self.break_anywhere(frame)):
+        #     # No need to trace this function
+        #     return # None
+        self.user_call(frame, arg)
+        if self.quitting: raise BdbQuit
+        return self.trace_dispatch
+
+
+    def set_continue(self):
+        # Don't stop when finished
+        # removes the PDB implementation that clears the trace when no BP set
+        if self.frame_returning:
+            caller_frame = self.frame_returning.f_back
+            if caller_frame and not caller_frame.f_trace:
+                caller_frame.f_trace = self.trace_dispatch
+        self._set_stopinfo(self.botframe, None, -1)
+
     def interaction(self, frame, traceback):
         if self.stop_ic >= 0 and instruction_count() < self.stop_ic :
             return
@@ -91,10 +126,12 @@ def main():
         try:
             _tdb.reset_instruction_count()
             tdb._runscript(mainpyfile)
+            i = _tdb.instruction_count()
             if tdb._user_requested_quit:
                 break
-            print "The program finished and will be restarted"
+            print "The program finished after executing "+ str(i) +" instructions and will be restarted"
         except ReExecute:
+            print "Re-executing from beginning"
             pass
         except Restart:
             print "Restarting", mainpyfile, "with arguments:"

@@ -28,6 +28,7 @@ import org.python.core.PyString;
 import org.python.core.PyStringMap;
 import org.python.core.PySystemState;
 import org.python.core.imp;
+import org.python.core.TdbTraceFunction;
 import org.python.core.util.RelativeFile;
 import org.python.modules._systemrestart;
 import org.python.modules.posix.PosixModule;
@@ -399,6 +400,9 @@ public class jython {
             }
 
             if (opts.moduleName != null) {
+                if(opts.moduleName.equals("tdb") && args.length == 3){
+                    TdbTraceFunction.file = args[2];
+                }
                 runModule(interp, opts.moduleName);
                 interp.cleanup();
                 return;

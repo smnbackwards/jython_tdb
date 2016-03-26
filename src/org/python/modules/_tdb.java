@@ -16,4 +16,12 @@ public class _tdb {
     public static void reset_instruction_count(){
         TdbTraceFunction.resetInstructionCount();
     }
+
+    public static PyLong call_depth(){
+        return Py.newLong(TdbTraceFunction.getCallDepth());
+    }
+
+    public static PyLong get_return_instruction(){
+        return Py.newLong(TdbTraceFunction.getReturnInstruction(TdbTraceFunction.getCallDepth()));
+    }
 }
