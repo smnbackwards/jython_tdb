@@ -67,9 +67,14 @@ class Tdb(pdb.Pdb):
         except Restart:
             raise ReExecute
 
-    def do_dumb(self, args):
-        print "dumbo"
-        raise ReExecute
+    def do_rnext(self, arg):
+        #TODO if the previous instruction was not a return, then stop_ic = instruction_count() - 1
+        #TODO if result is -1
+        self.stop_ic = _tdb.get_last_call_instuction()
+        try:
+            self.do_restart(None)
+        except Restart:
+            raise ReExecute
 
     def dispatch_call(self, frame, arg):
         # XXX 'arg' is no longer used

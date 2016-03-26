@@ -10,7 +10,8 @@ public class TdbTraceFunction extends PythonTraceFunction {
     private static long instructionCount = 0;
     private static long callDepth = 0;
     public static boolean isTracing = false;
-    public static Map<Long, Long> callReturnMap = new HashMap();
+    public static Map<Long, Long> callReturnMap = new HashMap<>();
+    public static Long lastCallInstructionCount = -1L;
     public static String file;
 
     TdbTraceFunction(PyObject tracefunc) {
@@ -41,6 +42,10 @@ public class TdbTraceFunction extends PythonTraceFunction {
         return callReturnMap.get(depth);
     }
 
+    public static long getLastCallInstructionCountAtCurrentLevel(){
+        return lastCallInstructionCount;
+    }
+
     @Override
     protected TraceFunction safeCall(PyFrame frame, String label, PyObject arg) {
         synchronized (imp.class) {
@@ -64,7 +69,7 @@ public class TdbTraceFunction extends PythonTraceFunction {
                         callReturnMap.put(callDepth, instructionCount-1);
                     }
                     if (label.equals("return")) {
-                        callReturnMap.remove(callDepth);
+                        lastCallInstructionCount =  callReturnMap.remove(callDepth);
                         callDepth--;
                     }
 

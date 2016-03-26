@@ -24,4 +24,9 @@ public class _tdb {
     public static PyLong get_return_instruction(){
         return Py.newLong(TdbTraceFunction.getReturnInstruction(TdbTraceFunction.getCallDepth()));
     }
+
+    public static PyLong get_last_call_instuction(){
+        return Py.newLong(TdbTraceFunction.getLastCallInstructionCountAtCurrentLevel());
+    }
+
 }
