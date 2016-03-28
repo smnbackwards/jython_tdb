@@ -1,12 +1,12 @@
+import _tdb
 import os
 import pdb
 import sys
 import traceback
-from bdb import BdbQuit, Bdb
-
+from bdb import BdbQuit
 from cmd import Cmd
 from pdb import Restart
-import _tdb
+
 
 class ReExecute(Exception):
     """Causes a debugger to be restarted for the debugged python program."""
