@@ -2,7 +2,6 @@
 
 import fnmatch
 import sys
-import os
 import types
 
 __all__ = ["DebugQuit", "DebugTracer"]
@@ -150,7 +149,7 @@ class DebugTracer:
             self.botframe = frame
             frame = frame.f_back
         #self.set_step()
-        #this method was inlined instead, since set_trace is a debug feature not a trace feature
+        #this method was inlined instead, since set_step is a debug feature not a trace feature
         #TODO see if it is safe to remove the if statement
         if self.frame_returning:
             caller_frame = self.frame_returning.f_back
