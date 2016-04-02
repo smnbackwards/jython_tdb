@@ -258,8 +258,10 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
             else: exc_type_name = t.__name__
             print >>self.stdout, '***', exc_type_name + ':', v
 
+    def preloop(self):
+        self.prompt = "(Tdb)<%s>"%self.get_ic()
+
     def precmd(self, line):
-        self.prompt = "(Tdb)<%s>"%self.ic
         """Handle alias expansion and ';;' separator."""
         if not line.strip():
             return line

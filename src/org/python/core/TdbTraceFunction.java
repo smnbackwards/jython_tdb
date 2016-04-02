@@ -74,15 +74,11 @@ public class TdbTraceFunction extends PythonTraceFunction {
                         callDepth--;
                     }
 
-
-                    //System.out.println(getInstructionCount()+" Trace calling"+label);
                     isTracing = true;
-                    //filename = frame.pycode.co_filename
                     int linenumber = frame.f_lineno;
-                    System.out.println(frame.f_code.co_filename + " " + frame.f_lineno + " " + getInstructionCount() + " @ " + callDepth);
+//                    System.out.println(frame.f_code.co_filename + " " + frame.f_lineno + " " + getInstructionCount() + " @ " + callDepth);
                     ret = tracefunc.__call__(frame, new PyString(label), arg);
                     isTracing = false;
-                    //System.out.println(getInstructionCount()+" Trace returned"+label);
                 } catch (PyException exc) {
                     frame.tracefunc = null;
                     ts.tracefunc = null;

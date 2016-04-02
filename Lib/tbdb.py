@@ -51,19 +51,20 @@ class Tbdb:
         if self.quitting:
             return  # None
 
-        self.ic = _tdb.instruction_count()
-        self.depth = _tdb.call_depth()
-        print "dispatch", event,self.ic, self.depth
+        ic = _tdb.instruction_count()
+        depth = _tdb.call_depth()
 
         if event == 'line':
-            return self.dispatch_line(frame, self.ic, self.depth)
-        if event == 'call':
-            return self.dispatch_call(frame, self.ic, self.depth, arg)
-        if event == 'return':
-            return self.dispatch_return(frame, self.ic, self.depth, arg)
-        if event == 'exception':
-            return self.dispatch_exception(frame, self.ic, self.depth, arg)
-        print 'idb: unknown debugging event:', repr(event)
+            self.dispatch_line(frame, ic, depth)
+        elif event == 'call':
+            self.dispatch_call(frame, ic, depth, arg)
+        elif event == 'return':
+            self.dispatch_return(frame, ic, depth, arg)
+        elif event == 'exception':
+            self.dispatch_exception(frame, ic, depth, arg)
+        else:
+            print 'idb: unknown debugging event:', repr(event)
+
         return self.trace_dispatch
 
     def dispatch_line(self, frame, ic, depth):
@@ -71,7 +72,6 @@ class Tbdb:
             self.redomode = False
             self.user_line(frame, ic, depth)
             if self.quitting: raise BdbQuit
-        return self.trace_dispatch
 
     def dispatch_call(self, frame, ic, depth, arg):
         # XXX 'arg' is no longer used
@@ -82,7 +82,6 @@ class Tbdb:
         self.redomode = False
         self.user_call(frame, ic, depth, arg)
         if self.quitting: raise BdbQuit
-        return self.trace_dispatch
 
     def dispatch_return(self, frame, ic, depth, arg):
         if self.stop_here(frame, ic, depth) or frame == self.returnframe:
@@ -93,14 +92,12 @@ class Tbdb:
             finally:
                 self.frame_returning = None
             if self.quitting: raise BdbQuit
-        return self.trace_dispatch
 
     def dispatch_exception(self, frame, ic, depth, arg):
         if self.stop_here(frame, ic, depth):
             self.redomode = False
             self.user_exception(frame, ic, depth, arg)
             if self.quitting: raise BdbQuit
-        return self.trace_dispatch
 
     # Normally derived classes don't override the following
     # methods, but they may if they want to redefine the
@@ -120,7 +117,7 @@ class Tbdb:
                 self.is_skipped_module(frame.f_globals.get('__name__')):
             return False
 
-        print "Stop  at %s @ %s \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth)
+        #NOTE print "Stop  at %s @ %s \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth)
         if self.stopic >= 0 and ic >= self.stopic :
             if self.stopdepth == -1 or self.stopdepth == depth :
                 return True
@@ -187,9 +184,14 @@ class Tbdb:
         but only if we are to stop at or just below this level."""
         pass
 
+    def get_ic(self):
+        return _tdb.instruction_count()
+
+    def get_depth(self):
+        return _tdb.call_depth()
+
     def _set_stopinfo(self, stopic, stopdepth, stopframe, returnframe, stoplineno=0):
-        print "Stop info set at", stopic, stopdepth
-        print self.stopframe, self.returnframe, self.quitting
+        #NOTE print "Stop info set at", stopic, stopdepth
         self.stopic = stopic
         self.stopdepth = stopdepth
 
