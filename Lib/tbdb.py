@@ -1,3 +1,4 @@
+
 import fnmatch
 import sys
 import os
@@ -20,6 +21,10 @@ class Tbdb:
 
         self.stopic = -1
         self.stopdepth = -1
+        self.redomode = False
+        self.stopframe = None
+        self.returnframe = None
+        self.quitting = 0
 
 
     def canonic(self, filename):
@@ -36,30 +41,34 @@ class Tbdb:
         import linecache
         linecache.checkcache()
         self.botframe = None
-        self._set_stopinfo(-1,-1, None, None)
+        if not self.redomode:
+            self._set_stopinfo(0,-1, None, None)
+        else:
+            self._set_stopinfo(self.stopic, self.stopdepth, None, None)
         _tdb.reset_instruction_count()
 
     def trace_dispatch(self, frame, event, arg):
         if self.quitting:
             return  # None
 
-        ic = _tdb.instruction_count()
-        depth = _tdb.call_depth()
-        # print "dispatch", ic, depth
+        self.ic = _tdb.instruction_count()
+        self.depth = _tdb.call_depth()
+        print "dispatch", event,self.ic, self.depth
 
         if event == 'line':
-            return self.dispatch_line(frame, ic, depth)
+            return self.dispatch_line(frame, self.ic, self.depth)
         if event == 'call':
-            return self.dispatch_call(frame, ic, depth, arg)
+            return self.dispatch_call(frame, self.ic, self.depth, arg)
         if event == 'return':
-            return self.dispatch_return(frame, ic, depth, arg)
+            return self.dispatch_return(frame, self.ic, self.depth, arg)
         if event == 'exception':
-            return self.dispatch_exception(frame, ic, depth, arg)
+            return self.dispatch_exception(frame, self.ic, self.depth, arg)
         print 'idb: unknown debugging event:', repr(event)
         return self.trace_dispatch
 
     def dispatch_line(self, frame, ic, depth):
         if self.stop_here(frame, ic, depth) or self.break_here(frame):
+            self.redomode = False
             self.user_line(frame, ic, depth)
             if self.quitting: raise BdbQuit
         return self.trace_dispatch
@@ -70,6 +79,7 @@ class Tbdb:
             # First call of dispatch since reset()
             self.botframe = frame.f_back # (CT) Note that this may also be None!
             return self.trace_dispatch
+        self.redomode = False
         self.user_call(frame, ic, depth, arg)
         if self.quitting: raise BdbQuit
         return self.trace_dispatch
@@ -78,6 +88,7 @@ class Tbdb:
         if self.stop_here(frame, ic, depth) or frame == self.returnframe:
             try:
                 self.frame_returning = frame
+                self.redomode = False
                 self.user_return(frame, ic, depth, arg)
             finally:
                 self.frame_returning = None
@@ -86,6 +97,7 @@ class Tbdb:
 
     def dispatch_exception(self, frame, ic, depth, arg):
         if self.stop_here(frame, ic, depth):
+            self.redomode = False
             self.user_exception(frame, ic, depth, arg)
             if self.quitting: raise BdbQuit
         return self.trace_dispatch
@@ -108,27 +120,22 @@ class Tbdb:
                 self.is_skipped_module(frame.f_globals.get('__name__')):
             return False
 
-        # print "stopic", self.stopic
+        print "Stop  at %s @ %s \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth)
         if self.stopic >= 0 and ic >= self.stopic :
-            print "stop ic reached",
             if self.stopdepth == -1 or self.stopdepth == depth :
-                print "stop depth reached"
                 return True
-            else :
-                print "stop depth NOT reached"
 
-
-        print "HALP"
-        if frame is self.stopframe:
-            if self.stoplineno == -1:
-                return False
-            return frame.f_lineno >= self.stoplineno
-        while frame is not None and frame is not self.stopframe:
-            if frame is self.botframe:
-                print "srsly halp"
-                return True
-            frame = frame.f_back
         return False
+        # if frame is self.stopframe:
+        #     if self.stoplineno == -1:
+        #         return False
+        #     return frame.f_lineno >= self.stoplineno
+        # while frame is not None and frame is not self.stopframe:
+        #     if frame is self.botframe:
+        #         print "srsly halp"
+        #         return True
+        #     frame = frame.f_back
+        # return False
 
     def break_here(self, frame):
         filename = self.canonic(frame.f_code.co_filename)
@@ -182,6 +189,7 @@ class Tbdb:
 
     def _set_stopinfo(self, stopic, stopdepth, stopframe, returnframe, stoplineno=0):
         print "Stop info set at", stopic, stopdepth
+        print self.stopframe, self.returnframe, self.quitting
         self.stopic = stopic
         self.stopdepth = stopdepth
 
@@ -219,6 +227,13 @@ class Tbdb:
     def set_return(self, frame):
         """Stop when returning from the given frame."""
         self._set_stopinfo(_tdb.instruction_count()+1,_tdb.call_depth()-1,frame.f_back, frame)
+
+    def set_rstep(self, n):
+        self.redomode = True
+        if n < 0:
+            self._set_stopinfo(_tdb.instruction_count()+n, -1, None, None)
+        else :
+            self._set_stopinfo(n, -1, None, None)
 
     def set_trace(self, frame=None):
         """Start debugging from `frame`.

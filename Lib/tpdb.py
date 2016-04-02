@@ -19,6 +19,10 @@ class Restart(Exception):
     """Causes a debugger to be restarted for the debugged python program."""
     pass
 
+class ReExecute(Exception):
+    """Causes a debugger to be restarted for the debugged python program."""
+    pass
+
 # Create a custom safe Repr instance and increase its maxstring.
 # The default of 30 truncates error messages too easily.
 _repr = Repr()
@@ -63,7 +67,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
         cmd.Cmd.__init__(self, completekey, stdin, stdout)
         if stdout:
             self.use_rawinput = 0
-        self.prompt = '(Pdb) '
+        self.prompt = '(Tdb) '
         self.aliases = {}
         self.mainpyfile = ''
         self._wait_for_mainpyfile = 0
@@ -145,7 +149,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
             return
         if self.stop_here(frame, ic, depth):
             print >>self.stdout, '--Call--'
-            self.interaction(frame, None)
+            self.interaction(frame, ic, depth, None)
 
     def user_line(self, frame, ic, depth):
         """This function is called when we stop or break at this line."""
@@ -155,7 +159,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
                 return
             self._wait_for_mainpyfile = 0
         if self.bp_commands(frame):
-            self.interaction(frame, None)
+            self.interaction(frame, ic, depth, None)
 
     def bp_commands(self,frame):
         """Call every command that was set for the current active breakpoint
@@ -187,7 +191,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
             return
         frame.f_locals['__return__'] = return_value
         print >>self.stdout, '--Return--'
-        self.interaction(frame, None)
+        self.interaction(frame, ic, depth, None)
 
     def user_exception(self, frame, ic, depth, exc_info):
         """This function is called if an exception occurs,
@@ -196,15 +200,26 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
             return
         exc_type, exc_value, exc_traceback = exc_info
         frame.f_locals['__exception__'] = exc_type, exc_value
+
+        if exc_type == Restart:
+            raise Restart
+        elif exc_type == ReExecute:
+            raise ReExecute
+
         if type(exc_type) == type(''):
             exc_type_name = exc_type
         else: exc_type_name = exc_type.__name__
         print >>self.stdout, exc_type_name + ':', _saferepr(exc_value)
-        self.interaction(frame, exc_traceback)
+
+        self.interaction(frame, ic, depth, exc_traceback)
 
     # General interaction function
 
-    def interaction(self, frame, traceback):
+    def interaction(self, frame, ic, depth, traceback):
+        #if we have set a stop count and the current count is before it, then we are in replay mode
+        if self.redomode :
+            return
+
         self.setup(frame, traceback)
         self.print_stack_entry(self.stack[self.curindex])
         self.cmdloop()
@@ -244,6 +259,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
             print >>self.stdout, '***', exc_type_name + ':', v
 
     def precmd(self, line):
+        self.prompt = "(Tdb)<%s>"%self.ic
         """Handle alias expansion and ';;' separator."""
         if not line.strip():
             return line
@@ -676,6 +692,8 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
             argv0 = sys.argv[0:1]
             sys.argv = shlex.split(arg)
             sys.argv[:0] = argv0
+        #todo added this?
+
         raise Restart
 
     do_restart = do_run
@@ -689,6 +707,33 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
         self.set_continue()
         return 1
     do_c = do_cont = do_continue
+
+    #region reverse commands
+
+    def do_rstep(self, arg):
+        if arg :
+            args = arg.split()
+            try:
+                step_to = int(args[0].strip())
+            except ValueError:
+                # something went wrong
+                print >>self.stdout, 'Rstep argument must be an int >= 0'
+                return
+            if step_to <= 0:
+                print >> self.stdout, 'Rstep %r must be an int >= 0' % step_to
+                return
+        else :
+            step_to = - 1
+
+        self.set_rstep(step_to)
+        print "Stepping back to instruction", self.stopic
+        try:
+            self.do_restart(None)
+        except Restart:
+            raise ReExecute
+
+
+    #endregion
 
     def do_jump(self, arg):
         if self.curindex + 1 != len(self.stack):
@@ -1220,7 +1265,6 @@ see no sign that the breakpoint was reached.
                                   "__file__"    : filename,
                                   "__builtins__": __builtins__,
                                   })
-
         # When bdb sets tracing, a number of call and line events happens
         # BEFORE debugger even reaches user's code (and the exact sequence of
         # events depends on python version). So we take special measures to
@@ -1315,6 +1359,10 @@ def main():
             if pdb._user_requested_quit:
                 break
             print "The program finished and will be restarted"
+        except ReExecute:
+            print "Re-executing from beginning"
+            pdb.redomode = True
+            pass
         except Restart:
             print "Restarting", mainpyfile, "with arguments:"
             print "\t" + " ".join(sys.argv[1:])
@@ -1327,7 +1375,7 @@ def main():
             print "Uncaught exception. Entering post mortem debugging"
             print "Running 'cont' or 'step' will restart the program"
             t = sys.exc_info()[2]
-            pdb.interaction(None, t)
+            pdb.interaction(None, t) # TODO update with ic and depth
             print "Post mortem debugger finished. The " + mainpyfile + \
                   " will be restarted"
 
