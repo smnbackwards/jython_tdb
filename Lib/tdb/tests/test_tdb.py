@@ -51,7 +51,7 @@ class TestTdb(tpdb.Pdb):
         tpdb.Pdb.__init__(self, controller=commandlinecontroller.CommandLineController(), skip=skip)
         self.instructionsStoppedAt = []
         self.finalinstructioncount = -1
-        #don't restart debugging
+        # don't restart debugging
         self._user_requested_quit = 1
 
     def interaction(self, frame, traceback):
@@ -86,6 +86,13 @@ class PdbTestCase(unittest.TestCase):
             self.assertSequenceEqual([0], debugger.instructionsStoppedAt)
             self.assertEqual(24, debugger.finalinstructioncount)
 
+    def test_restart(self):
+        with TestInput(['step', 'restart', 'continue']):
+            debugger = TestTdb()
+            tpdb.mainloop(debugger,'examples/fib.py')
+            self.assertSequenceEqual([0,1,0], debugger.instructionsStoppedAt)
+            self.assertEqual(24, debugger.finalinstructioncount)
+
     def test_next(self):
         with TestInput([
             'step',
@@ -101,6 +108,52 @@ class PdbTestCase(unittest.TestCase):
             debugger = TestTdb()
             debugger._runscript('examples/fib.py')
             self.assertSequenceEqual([0, 1, 2, 3, 4, 16, 20, 21, 22], debugger.instructionsStoppedAt)
+            self.assertEqual(24, debugger.finalinstructioncount)
+
+    def test_break_line(self):
+        with TestInput([
+            'break 6',
+            'continue',
+            'continue'
+        ]):
+            debugger = TestTdb()
+            tpdb.mainloop(debugger, 'examples/fib.py')
+            self.assertSequenceEqual([0, 22], debugger.instructionsStoppedAt)
+            self.assertEqual(24, debugger.finalinstructioncount)
+
+    def test_break_function(self):
+        with TestInput([
+            'break 1',
+            'step',
+            'continue' # bp never gets hit, we can't break on a function?
+        ]):
+            debugger = TestTdb()
+            tpdb.mainloop(debugger, 'examples/fib.py')
+            self.assertSequenceEqual([0, 1], debugger.instructionsStoppedAt)
+            self.assertEqual(24, debugger.finalinstructioncount)
+
+    def test_break_function_call(self):
+        with TestInput([
+            'break 5',
+            'continue',
+            'continue' # bp doesn't get hit again
+        ]):
+            debugger = TestTdb()
+            tpdb.mainloop(debugger, 'examples/fib.py')
+            self.assertSequenceEqual([0, 1], debugger.instructionsStoppedAt)
+            self.assertEqual(24, debugger.finalinstructioncount)
+
+    def test_break_function_return(self):
+        with TestInput([
+            'break 3',
+            'continue',
+            'continue',# fib(1)
+            'continue',# fib(0)
+            'continue',# fib(1)
+        ]):
+            debugger = TestTdb()
+            tpdb.mainloop(debugger, 'examples/fib.py')
+            self.assertSequenceEqual([0, 10,14,19], debugger.instructionsStoppedAt)
             self.assertEqual(24, debugger.finalinstructioncount)
 
     def test_rstep_one(self):
