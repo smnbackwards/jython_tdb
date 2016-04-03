@@ -148,22 +148,26 @@ class Pdb(Tbdb):
 
     # Override Bdb methods
     #region user trace methods
-    def user_call(self, frame, ic, depth, argument_list):
-        """This method is called when there is the remote possibility
-        that we ever need to stop in this function."""
-        if self._wait_for_mainpyfile:
-            return
-        if self.stop_here(frame, ic, depth):
-            print >>self.stdout, '--Call--'
-            self.interaction(frame, None)
-
-    def user_line(self, frame, ic, depth):
-        """This function is called when we stop or break at this line."""
+    def check_wait_for_mainpyfile(self, frame):
         if self._wait_for_mainpyfile:
             if (self.mainpyfile != self.canonic(frame.f_code.co_filename)
                 or frame.f_lineno<= 0):
-                return
+                return True
             self._wait_for_mainpyfile = 0
+        return False
+
+    def user_call(self, frame, ic, depth, argument_list):
+        """This method is called when there is the remote possibility
+        that we ever need to stop in this function."""
+        if self.check_wait_for_mainpyfile(frame):
+            return
+        print >>self.stdout, '--Call--'
+        self.interaction(frame, None)
+
+    def user_line(self, frame, ic, depth):
+        """This function is called when we stop or break at this line."""
+        if self.check_wait_for_mainpyfile(frame):
+            return
         if self.bp_commands(frame):
             self.interaction(frame, None)
 
@@ -193,7 +197,7 @@ class Pdb(Tbdb):
 
     def user_return(self, frame, ic, depth, return_value):
         """This function is called when a return trap is set here."""
-        if self._wait_for_mainpyfile:
+        if self.check_wait_for_mainpyfile(frame):
             return
         frame.f_locals['__return__'] = return_value
         print >>self.stdout, '--Return--'
@@ -202,7 +206,7 @@ class Pdb(Tbdb):
     def user_exception(self, frame, ic, depth, exc_info):
         """This function is called if an exception occurs,
         but only if we are to stop at or just below this level."""
-        if self._wait_for_mainpyfile:
+        if self.check_wait_for_mainpyfile(frame):
             return
         exc_type, exc_value, exc_traceback = exc_info
         frame.f_locals['__exception__'] = exc_type, exc_value

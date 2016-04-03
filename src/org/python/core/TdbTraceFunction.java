@@ -1,7 +1,6 @@
 package org.python.core;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Stack;
 
 /**
  * Created by dual- on 2/18/2016.
@@ -10,7 +9,7 @@ public class TdbTraceFunction extends PythonTraceFunction {
     private static long instructionCount = 0;
     private static long callDepth = 0;
     public static boolean isTracing = false;
-    public static Map<Long, Long> callReturnMap = new HashMap<>();
+    public static Stack<Long> callReturnMap = new Stack<>();
     public static Long lastCallInstructionCount = -1L;
     public static String file;
 
@@ -36,10 +35,10 @@ public class TdbTraceFunction extends PythonTraceFunction {
         return callDepth;
     }
 
-    public static long getReturnInstruction(long depth){
-        assert callReturnMap.containsKey(depth);
+    public static long getReturnInstruction(){
+        assert !callReturnMap.empty();
 
-        return callReturnMap.get(depth);
+        return lastCallInstructionCount;
     }
 
     public static long getLastCallInstructionCountAtCurrentLevel(){
@@ -67,10 +66,11 @@ public class TdbTraceFunction extends PythonTraceFunction {
 
                     if (label.equals("call")) {
                         callDepth++;
-                        callReturnMap.put(callDepth, instructionCount-1);
+                        lastCallInstructionCount = instructionCount - 1;
+                        callReturnMap.push(lastCallInstructionCount);
                     }
                     if (label.equals("return")) {
-                        lastCallInstructionCount =  callReturnMap.remove(callDepth);
+                        lastCallInstructionCount =  callReturnMap.pop();
                         callDepth--;
                     }
 

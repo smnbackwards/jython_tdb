@@ -22,7 +22,7 @@ public class _tdb {
     }
 
     public static PyLong get_return_instruction(){
-        return Py.newLong(TdbTraceFunction.getReturnInstruction(TdbTraceFunction.getCallDepth()));
+        return Py.newLong(TdbTraceFunction.getReturnInstruction());
     }
 
     public static PyLong get_last_call_instuction(){

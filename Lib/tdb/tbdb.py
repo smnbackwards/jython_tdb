@@ -11,6 +11,11 @@ __all__ = ["BdbQuit","TBdb"]
 class BdbQuit(Exception):
     """Exception to give up completely"""
 
+debug_enabled = 0
+def debug(output):
+    if debug_enabled :
+        print >> sys.stderr, output
+
 
 class Tbdb:
     def __init__(self, skip=None):
@@ -53,6 +58,7 @@ class Tbdb:
 
         ic = _tdb.instruction_count()
         depth = _tdb.call_depth()
+        debug("%s event at %i %i"%(event,ic,depth))
 
         if event == 'line':
             self.dispatch_line(frame, ic, depth)
@@ -78,13 +84,18 @@ class Tbdb:
         if self.botframe is None:
             # First call of dispatch since reset()
             self.botframe = frame.f_back # (CT) Note that this may also be None!
-            return self.trace_dispatch
-        self.redomode = False
-        self.user_call(frame, ic, depth, arg)
-        if self.quitting: raise BdbQuit
+            # debug("dispatch call returned early")
+            # return self.trace_dispatch
+        if self.stop_here(frame,ic,depth):
+            self.redomode = False
+            self.user_call(frame, ic, depth, arg)
+            if self.quitting: raise BdbQuit
 
     def dispatch_return(self, frame, ic, depth, arg):
-        if self.stop_here(frame, ic, depth) or frame == self.returnframe:
+        # if not(frame == self.returnframe == self.stop_here(frame, ic, depth)):
+        #     debug("return frame =[")
+        #     assert False
+        if self.stop_here(frame, ic, depth):
             try:
                 self.frame_returning = frame
                 self.redomode = False
@@ -117,11 +128,12 @@ class Tbdb:
                 self.is_skipped_module(frame.f_globals.get('__name__')):
             return False
 
-        #NOTE print "Stop  at %s @ %s \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth)
         if self.stopic >= 0 and ic >= self.stopic :
             if self.stopdepth == -1 or self.stopdepth == depth :
+                debug("Stop  at %s @ %s True \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth))
                 return True
 
+        debug("Stop  at %s @ %s False \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth))
         return False
         # if frame is self.stopframe:
         #     if self.stoplineno == -1:
@@ -191,7 +203,7 @@ class Tbdb:
         return _tdb.call_depth()
 
     def _set_stopinfo(self, stopic, stopdepth, stopframe, returnframe, stoplineno=0):
-        #NOTE print "Stop info set at", stopic, stopdepth
+        debug("Stop info set at %s %s"%(stopic, stopdepth))
         self.stopic = stopic
         self.stopdepth = stopdepth
 

@@ -7,9 +7,11 @@ import textwrap
 from tdb import commandlinecontroller, tpdb
 from test import test_support
 
+
 class NullDevice():
     def write(self, s):
         pass
+
 
 class _FakeInput:
     """
@@ -45,19 +47,17 @@ class TestInput(object):
         sys.stdout = self.real_stdout
 
 
-
 class TestTdb(tpdb.Pdb):
     def __init__(self, skip=None):
-        #controller must be set here in order for stdout to be swallowed
-        tpdb.Pdb.__init__(self,controller=commandlinecontroller.CommandLineController(), skip=skip)
+        # controller must be set here in order for stdout to be swallowed
+        tpdb.Pdb.__init__(self, controller=commandlinecontroller.CommandLineController(), skip=skip)
         self.instructionsStoppedAt = []
         self._user_requested_quit = 1
 
     def interaction(self, frame, traceback):
-        if not self.redomode :
+        if not self.redomode:
             self.instructionsStoppedAt.append(self.get_ic())
             tpdb.Pdb.interaction(self, frame, traceback)
-
 
 
 class PdbTestCase(unittest.TestCase):
@@ -108,78 +108,78 @@ class PdbTestCase(unittest.TestCase):
             self.assertSequenceEqual([4, 5, 6, 7, 8, 20, 24, 25, 26], debugger.instructionsStoppedAt)
 
     def test_rstep_one(self):
-        with TestInput(["step", "rstep",'continue', 'quit']):
+        with TestInput(["step", "rstep", 'continue', 'quit']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual([4,5,4], debugger.instructionsStoppedAt)
+            self.assertSequenceEqual([4, 5, 4], debugger.instructionsStoppedAt)
 
     def test_rstep_two(self):
-        with TestInput(["step","step", "rstep",'quit']):
+        with TestInput(["step", "step", "rstep", 'quit']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual([4,5,6,5], debugger.instructionsStoppedAt)
+            self.assertSequenceEqual([4, 5, 6, 5], debugger.instructionsStoppedAt)
 
     def test_rstep_out_of_call(self):
-        with TestInput(["step","step","step","rstep",'quit']):
+        with TestInput(["step", "step", "step", "rstep", 'quit']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual([4,5,6,7,6], debugger.instructionsStoppedAt)
+            self.assertSequenceEqual([4, 5, 6, 7, 6], debugger.instructionsStoppedAt)
 
     def test_rstep_arg(self):
-        with TestInput(['step','step','step','rstep 5','quit']):
+        with TestInput(['step', 'step', 'step', 'rstep 5', 'quit']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual([4,5,6,7,5], debugger.instructionsStoppedAt)
+            self.assertSequenceEqual([4, 5, 6, 7, 5], debugger.instructionsStoppedAt)
 
     def test_rreturn_after_return(self):
-        with TestInput(['step']*2 + ['return','rreturn','quit']):
+        with TestInput(['step'] * 2 + ['return', 'rreturn', 'quit']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual([4,5,6,25,5], debugger.instructionsStoppedAt)
+            self.assertSequenceEqual([4, 5, 6, 25, 5], debugger.instructionsStoppedAt)
 
     def test_rreturn_depth_1(self):
-        with TestInput(['step']*2 + ['rreturn','quit']):
+        with TestInput(['step'] * 2 + ['rreturn', 'quit']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual([4,5,6,5], debugger.instructionsStoppedAt)
-        with TestInput(['step']*3 + ['rreturn','quit']):
+            self.assertSequenceEqual([4, 5, 6, 5], debugger.instructionsStoppedAt)
+        with TestInput(['step'] * 3 + ['rreturn', 'quit']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual([4,5,6,7,5], debugger.instructionsStoppedAt)
-        with TestInput(['step']*4 + ['rreturn','quit']):
+            self.assertSequenceEqual([4, 5, 6, 7, 5], debugger.instructionsStoppedAt)
+        with TestInput(['step'] * 4 + ['rreturn', 'quit']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual([4,5,6,7,8,5], debugger.instructionsStoppedAt)
+            self.assertSequenceEqual([4, 5, 6, 7, 8, 5], debugger.instructionsStoppedAt)
 
     def test_rreturn_depth_2(self):
-        with TestInput(['step']*7 + ['rreturn', 'rreturn','quit']):
+        with TestInput(['step'] * 7 + ['rreturn', 'rreturn', 'quit']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual([4,5,6,7,8,9,10,11,8,5], debugger.instructionsStoppedAt)
+            self.assertSequenceEqual([4, 5, 6, 7, 8, 9, 10, 11, 8, 5], debugger.instructionsStoppedAt)
 
     def test_rnext_line(self):
-        with TestInput(["step", "rnext",'quit']):
+        with TestInput(["step", "rnext", 'quit']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual([4,5,4], debugger.instructionsStoppedAt)
+            self.assertSequenceEqual([4, 5, 4], debugger.instructionsStoppedAt)
 
     def test_rnext_call(self):
-        with TestInput(["step"]*2 +["rnext",'quit']):
+        with TestInput(["step"] * 2 + ["rnext", 'quit']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual([4,5,6,5], debugger.instructionsStoppedAt)
+            self.assertSequenceEqual([4, 5, 6, 5], debugger.instructionsStoppedAt)
 
     def test_rnext_return(self):
-        with TestInput(["step"]*4 +["next", "rnext",'quit']):
+        with TestInput(["step"] * 4 + ["next", "rnext", 'quit']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual([4,5,6,7,8,20,8], debugger.instructionsStoppedAt)
+            self.assertSequenceEqual([4, 5, 6, 7, 8, 20, 8], debugger.instructionsStoppedAt)
 
     def test_rstep_all(self):
         with TestInput(["step" for x in range(4, 26)] + ["rstep" for x in range(4, 26)] + ['continue']):
             debugger = TestTdb()
             tpdb.mainloop(debugger, 'examples/fib.py')
-            self.assertSequenceEqual(range(4, 26 + 1), range(25, 4), debugger.instructionsStoppedAt)
+            self.assertSequenceEqual(range(4, 26 + 1) + range(25, 4 - 1, -1), debugger.instructionsStoppedAt)
 
 
 def test_main():
