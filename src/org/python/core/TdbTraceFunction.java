@@ -36,8 +36,6 @@ public class TdbTraceFunction extends PythonTraceFunction {
     }
 
     public static long getReturnInstruction(){
-        assert !callReturnMap.empty();
-
         return lastCallInstructionCount;
     }
 
