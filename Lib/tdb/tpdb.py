@@ -224,12 +224,13 @@ class Pdb(Tbdb):
     def interaction(self, frame, traceback):
         #if we have set a stop count and the current count is before it, then we are in replay mode
         if self.redomode :
-            return
+            return False
 
         self.setup(frame, traceback)
         self.print_stack_entry(self.stack[self.curindex])
         self.controller.get_cmd()
         self.forget()
+        return True
 
     # Command definitions, called by cmdloop()
     # The argument is the remaining string on the command line
