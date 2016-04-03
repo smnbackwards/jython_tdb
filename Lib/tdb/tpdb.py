@@ -76,6 +76,7 @@ class Pdb(Tbdb):
         self.aliases = {}
         self.mainpyfile = ''
         self._wait_for_mainpyfile = 0
+        self._user_requested_quit = 0
         # Try to load readline if it exists
         try:
             import readline
@@ -1192,7 +1193,7 @@ see no sign that the breakpoint was reached.
         # user_call for details).
         self._wait_for_mainpyfile = 1
         self.mainpyfile = self.canonic(filename)
-        self._user_requested_quit = 0
+        # self._user_requested_quit = 0
         statement = 'execfile(%r)' % filename
         self.run(statement)
 
@@ -1253,26 +1254,7 @@ def help():
         print 'Sorry, can\'t find the help file "pdb.doc"',
         print 'along the Python search path'
 
-def main():
-    if not sys.argv[1:] or sys.argv[1] in ("--help", "-h"):
-        print "usage: pdb.py scriptfile [arg] ..."
-        sys.exit(2)
-
-    mainpyfile =  sys.argv[1]     # Get script filename
-    if not os.path.exists(mainpyfile):
-        print 'Error:', mainpyfile, 'does not exist'
-        sys.exit(1)
-
-    del sys.argv[0]         # Hide "pdb.py" from argument list
-
-    # Replace pdb's dir with script's dir in front of module search path.
-    sys.path[0] = os.path.dirname(mainpyfile)
-
-    # Note on saving/restoring sys.argv: it's a good idea when sys.argv was
-    # modified by the script being debugged. It's a bad idea when it was
-    # changed by the user from the command line. There is a "restart" command
-    # which allows explicit specification of command line arguments.
-    pdb = Pdb()
+def mainloop(pdb, mainpyfile):
     while True:
         try:
             pdb._runscript(mainpyfile)
@@ -1298,6 +1280,29 @@ def main():
             pdb.interaction(None, t) # TODO update with ic and depth
             print "Post mortem debugger finished. The " + mainpyfile + \
                   " will be restarted"
+
+
+def main():
+    if not sys.argv[1:] or sys.argv[1] in ("--help", "-h"):
+        print "usage: pdb.py scriptfile [arg] ..."
+        sys.exit(2)
+
+    mainpyfile =  sys.argv[1]     # Get script filename
+    if not os.path.exists(mainpyfile):
+        print 'Error:', mainpyfile, 'does not exist'
+        sys.exit(1)
+
+    del sys.argv[0]         # Hide "pdb.py" from argument list
+
+    # Replace pdb's dir with script's dir in front of module search path.
+    sys.path[0] = os.path.dirname(mainpyfile)
+
+    # Note on saving/restoring sys.argv: it's a good idea when sys.argv was
+    # modified by the script being debugged. It's a bad idea when it was
+    # changed by the user from the command line. There is a "restart" command
+    # which allows explicit specification of command line arguments.
+    pdb = Pdb()
+    mainloop(pdb,mainpyfile)
 
 
 # When invoked as main program, invoke the debugger on a script

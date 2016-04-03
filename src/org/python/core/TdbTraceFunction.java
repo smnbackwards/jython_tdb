@@ -58,10 +58,10 @@ public class TdbTraceFunction extends PythonTraceFunction {
                 PyObject ret = null;
                 try {
                     ts.tracing = true;
-                    if (frame.f_code.co_filename.endsWith("db.py")) {
-                        System.out.println("Skipping because ends with db.py");
-                        return this;
-                    }
+//                    if (frame.f_code.co_filename.endsWith("db.py")) {
+//                        System.out.println("Skipping because ends with db.py");
+//                        return this;
+//                    }
 
                     incInstructionCount(frame);
 
