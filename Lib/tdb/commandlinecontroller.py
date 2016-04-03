@@ -1,18 +1,17 @@
 from __future__ import print_function
 import cmd
 import sys
+from .controller import Controller
 
+class CommandLineController(Controller, cmd.Cmd):
 
-
-class CommandLineController(cmd.Cmd):
-
-    def __init__(self, debugger):
+    def __init__(self):
+        Controller.__init__(self)
         cmd.Cmd.__init__(self,completekey='tab', stdin=None, stdout=None)
 
-        self.debugger = debugger
-
         self.aliases = {}
-        self.prompt = "<>(tdb)"
+
+    do_h = cmd.Cmd.do_help
 
     def output(self, *objects):
         print(*objects, file=self.stdout, end=' ')
@@ -31,6 +30,8 @@ class CommandLineController(cmd.Cmd):
         if obj is not None:
             self.output(repr(obj))
 
+    def preloop(self):
+        self.prompt = "(Tdb)<%s>"%self.debugger.get_ic()
 
     def default(self, line):
         if line[:1] == '!': line = line[1:]

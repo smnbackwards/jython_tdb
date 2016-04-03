@@ -6,13 +6,14 @@
 
 import sys
 import linecache
-import cmd
-import tbdb as bdb
 from repr import Repr
 import os
 import re
 import pprint
 import traceback
+
+from .tbdb import Tbdb, Breakpoint
+from .commandlinecontroller import CommandLineController
 
 
 class Restart(Exception):
@@ -60,13 +61,17 @@ def find_function(funcname, filename):
 # line_prefix = ': '    # Use this to get the old situation back
 line_prefix = '\n-> '   # Probably a better default
 
-class Pdb(bdb.Tbdb, cmd.Cmd):
+class Pdb(Tbdb):
 
-    def __init__(self, completekey='tab', stdin=None, stdout=None, skip=None):
-        bdb.Tbdb.__init__(self, skip=skip)
-        cmd.Cmd.__init__(self, completekey, stdin, stdout)
-        if stdout:
-            self.use_rawinput = 0
+    def __init__(self, controller = CommandLineController(), skip=None):
+        Tbdb.__init__(self, skip=skip)
+        self.controller = controller
+        self.controller.debugger = self
+
+        self.stdout = self.controller.stdout
+        self.stdin = self.controller.stdin
+
+
         self.prompt = '(Tdb) '
         self.aliases = {}
         self.mainpyfile = ''
@@ -109,7 +114,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
         # defining a list
 
     def reset(self):
-        bdb.Tbdb.reset(self)
+        Tbdb.reset(self)
         self.forget()
 
     def forget(self):
@@ -141,7 +146,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
                     self.onecmd(line)
 
     # Override Bdb methods
-
+    #region user trace methods
     def user_call(self, frame, ic, depth, argument_list):
         """This method is called when there is the remote possibility
         that we ever need to stop in this function."""
@@ -149,7 +154,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
             return
         if self.stop_here(frame, ic, depth):
             print >>self.stdout, '--Call--'
-            self.interaction(frame, ic, depth, None)
+            self.interaction(frame, None)
 
     def user_line(self, frame, ic, depth):
         """This function is called when we stop or break at this line."""
@@ -159,7 +164,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
                 return
             self._wait_for_mainpyfile = 0
         if self.bp_commands(frame):
-            self.interaction(frame, ic, depth, None)
+            self.interaction(frame, None)
 
     def bp_commands(self,frame):
         """Call every command that was set for the current active breakpoint
@@ -191,7 +196,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
             return
         frame.f_locals['__return__'] = return_value
         print >>self.stdout, '--Return--'
-        self.interaction(frame, ic, depth, None)
+        self.interaction(frame, None)
 
     def user_exception(self, frame, ic, depth, exc_info):
         """This function is called if an exception occurs,
@@ -211,126 +216,24 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
         else: exc_type_name = exc_type.__name__
         print >>self.stdout, exc_type_name + ':', _saferepr(exc_value)
 
-        self.interaction(frame, ic, depth, exc_traceback)
+        self.interaction(frame, exc_traceback)
+    #endregion
 
     # General interaction function
 
-    def interaction(self, frame, ic, depth, traceback):
+    def interaction(self, frame, traceback):
         #if we have set a stop count and the current count is before it, then we are in replay mode
         if self.redomode :
             return
 
         self.setup(frame, traceback)
         self.print_stack_entry(self.stack[self.curindex])
-        self.cmdloop()
+        self.controller.get_cmd()
         self.forget()
-
-    def displayhook(self, obj):
-        """Custom displayhook for the exec in default(), which prevents
-        assignment of the _ variable in the builtins.
-        """
-        # reproduce the behavior of the standard displayhook, not printing None
-        if obj is not None:
-            print repr(obj)
-
-    def default(self, line):
-        if line[:1] == '!': line = line[1:]
-        locals = self.curframe_locals
-        globals = self.curframe.f_globals
-        try:
-            code = compile(line + '\n', '<stdin>', 'single')
-            save_stdout = sys.stdout
-            save_stdin = sys.stdin
-            save_displayhook = sys.displayhook
-            try:
-                sys.stdin = self.stdin
-                sys.stdout = self.stdout
-                sys.displayhook = self.displayhook
-                exec code in globals, locals
-            finally:
-                sys.stdout = save_stdout
-                sys.stdin = save_stdin
-                sys.displayhook = save_displayhook
-        except:
-            t, v = sys.exc_info()[:2]
-            if type(t) == type(''):
-                exc_type_name = t
-            else: exc_type_name = t.__name__
-            print >>self.stdout, '***', exc_type_name + ':', v
-
-    def preloop(self):
-        self.prompt = "(Tdb)<%s>"%self.get_ic()
-
-    def precmd(self, line):
-        """Handle alias expansion and ';;' separator."""
-        if not line.strip():
-            return line
-        args = line.split()
-        while args[0] in self.aliases:
-            line = self.aliases[args[0]]
-            ii = 1
-            for tmpArg in args[1:]:
-                line = line.replace("%" + str(ii),
-                                    tmpArg)
-                ii = ii + 1
-            line = line.replace("%*", ' '.join(args[1:]))
-            args = line.split()
-        # split into ';;' separated commands
-        # unless it's an alias command
-        if args[0] != 'alias':
-            marker = line.find(';;')
-            if marker >= 0:
-                # queue up everything after marker
-                next = line[marker+2:].lstrip()
-                self.cmdqueue.append(next)
-                line = line[:marker].rstrip()
-        return line
-
-    def onecmd(self, line):
-        """Interpret the argument as though it had been typed in response
-        to the prompt.
-
-        Checks whether this line is typed at the normal prompt or in
-        a breakpoint command list definition.
-        """
-        if not self.commands_defining:
-            return cmd.Cmd.onecmd(self, line)
-        else:
-            return self.handle_command_def(line)
-
-    def handle_command_def(self,line):
-        """Handles one command line during command list definition."""
-        cmd, arg, line = self.parseline(line)
-        if not cmd:
-            return
-        if cmd == 'silent':
-            self.commands_silent[self.commands_bnum] = True
-            return # continue to handle other cmd def in the cmd list
-        elif cmd == 'end':
-            self.cmdqueue = []
-            return 1 # end of cmd list
-        cmdlist = self.commands[self.commands_bnum]
-        if arg:
-            cmdlist.append(cmd+' '+arg)
-        else:
-            cmdlist.append(cmd)
-        # Determine if we must stop
-        try:
-            func = getattr(self, 'do_' + cmd)
-        except AttributeError:
-            func = self.default
-        # one of the resuming commands
-        if func.func_name in self.commands_resuming:
-            self.commands_doprompt[self.commands_bnum] = False
-            self.cmdqueue = []
-            return 1
-        return
 
     # Command definitions, called by cmdloop()
     # The argument is the remaining string on the command line
     # Return true to exit from the command loop
-
-    do_h = cmd.Cmd.do_help
 
     def do_commands(self, arg):
         """Defines a list of commands associated to a breakpoint.
@@ -338,7 +241,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
         Those commands will be executed whenever the breakpoint causes
         the program to stop execution."""
         if not arg:
-            bnum = len(bdb.Breakpoint.bpbynumber)-1
+            bnum = len(Breakpoint.bpbynumber)-1
         else:
             try:
                 bnum = int(arg)
@@ -364,7 +267,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
         if not arg:
             if self.breaks:  # There's at least one
                 print >>self.stdout, "Num Type         Disp Enb   Where"
-                for bp in bdb.Breakpoint.bpbynumber:
+                for bp in Breakpoint.bpbynumber:
                     if bp:
                         bp.bpprint(self.stdout)
             return
@@ -517,11 +420,11 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
                 print >>self.stdout, 'Breakpoint index %r is not a number' % i
                 continue
 
-            if not (0 <= i < len(bdb.Breakpoint.bpbynumber)):
+            if not (0 <= i < len(Breakpoint.bpbynumber)):
                 print >>self.stdout, 'No breakpoint numbered', i
                 continue
 
-            bp = bdb.Breakpoint.bpbynumber[i]
+            bp = Breakpoint.bpbynumber[i]
             if bp:
                 bp.enable()
 
@@ -534,11 +437,11 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
                 print >>self.stdout, 'Breakpoint index %r is not a number' % i
                 continue
 
-            if not (0 <= i < len(bdb.Breakpoint.bpbynumber)):
+            if not (0 <= i < len(Breakpoint.bpbynumber)):
                 print >>self.stdout, 'No breakpoint numbered', i
                 continue
 
-            bp = bdb.Breakpoint.bpbynumber[i]
+            bp = Breakpoint.bpbynumber[i]
             if bp:
                 bp.disable()
 
@@ -557,7 +460,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
         except:
             cond = None
         try:
-            bp = bdb.Breakpoint.bpbynumber[bpnum]
+            bp = Breakpoint.bpbynumber[bpnum]
         except IndexError:
             print >>self.stdout, 'Breakpoint index %r is not valid' % args[0]
             return
@@ -582,7 +485,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
         except:
             count = 0
         try:
-            bp = bdb.Breakpoint.bpbynumber[bpnum]
+            bp = Breakpoint.bpbynumber[bpnum]
         except IndexError:
             print >>self.stdout, 'Breakpoint index %r is not valid' % args[0]
             return
@@ -634,7 +537,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
                 print >>self.stdout, 'Breakpoint index %r is not a number' % i
                 continue
 
-            if not (0 <= i < len(bdb.Breakpoint.bpbynumber)):
+            if not (0 <= i < len(Breakpoint.bpbynumber)):
                 print >>self.stdout, 'No breakpoint numbered', i
                 continue
             err = self.clear_bpbynumber(i)
@@ -959,6 +862,7 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
 
 
     # Help methods (derived from pdb.doc)
+    #region Help
 
     def help_help(self):
         self.help_h()
@@ -1242,6 +1146,8 @@ see no sign that the breakpoint was reached.
     def help_pdb(self):
         help()
 
+    #endregion
+
     def lookupmodule(self, filename):
         """Helper function for break/clear parsing -- may be overridden.
 
@@ -1395,5 +1301,5 @@ def main():
 
 # When invoked as main program, invoke the debugger on a script
 if __name__ == '__main__':
-    import tpdb
-    tpdb.main()
+    import tdb.tpdb
+    tdb.tpdb.main()

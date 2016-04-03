@@ -4,7 +4,7 @@ import sys
 import os
 import types
 import _tdb
-from tdb.breakpoint import Breakpoint, effective, checkfuncname
+from .breakpoint import Breakpoint, effective, checkfuncname
 
 __all__ = ["BdbQuit","TBdb"]
 
