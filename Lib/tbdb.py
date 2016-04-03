@@ -237,6 +237,12 @@ class Tbdb:
         else :
             self._set_stopinfo(n, -1, None, None)
 
+    def set_rreturn(self):
+        self._set_stopinfo(_tdb.get_return_instruction(), -1, None, None)
+
+    def set_rnext(self):
+        self._set_stopinfo(_tdb.get_last_call_instuction(), -1, None, None)
+
     def set_trace(self, frame=None):
         """Start debugging from `frame`.
 

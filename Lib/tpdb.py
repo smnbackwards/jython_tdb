@@ -711,6 +711,12 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
     do_c = do_cont = do_continue
 
     #region reverse commands
+    def re_execute(self):
+        print "Stepping back to instruction", self.stopic
+        try:
+            self.do_restart(None)
+        except Restart:
+            raise ReExecute
 
     def do_rstep(self, arg):
         if arg :
@@ -728,12 +734,17 @@ class Pdb(bdb.Tbdb, cmd.Cmd):
             step_to = - 1
 
         self.set_rstep(step_to)
-        print "Stepping back to instruction", self.stopic
-        try:
-            self.do_restart(None)
-        except Restart:
-            raise ReExecute
+        self.re_execute()
 
+    def do_rreturn(self, arg):
+        self.set_rreturn()
+        self.re_execute()
+
+    def do_rnext(self, arg):
+        #TODO if the previous instruction was not a return, then stop_ic = instruction_count() - 1
+        #TODO if result is -1
+        self.set_rnext()
+        self.re_execute()
 
     #endregion
 
