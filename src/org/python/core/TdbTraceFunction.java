@@ -10,7 +10,7 @@ public class TdbTraceFunction extends PythonTraceFunction {
     private static long callDepth = 0;
     public static boolean isTracing = false;
     public static Stack<Long> callReturnMap = new Stack<>();
-    public static Long lastCallInstructionCount = -1L;
+    public static long lastCallInstructionCount = -1L;
     public static String file;
 
     TdbTraceFunction(PyObject tracefunc) {
@@ -25,6 +25,8 @@ public class TdbTraceFunction extends PythonTraceFunction {
     public static void resetInstructionCount() {
         instructionCount = 0;
         callDepth = 0;
+        callReturnMap = new Stack<>();
+        lastCallInstructionCount = 0;
     }
 
     public static long getInstructionCount() {

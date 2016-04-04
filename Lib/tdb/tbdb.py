@@ -205,7 +205,7 @@ class Tbdb:
 
 
 
-    def _set_stopinfo(self, stopic, stopdepth, stopframe, returnframe, stoplineno=0):
+    def _set_stopinfo(self, stopic, stopdepth, stopframe, returnframe):
         debug("Stop info set at %s %s"%(stopic, stopdepth))
         self.stopic = stopic
         self.stopdepth = stopdepth
@@ -213,9 +213,6 @@ class Tbdb:
         self.stopframe = stopframe
         self.returnframe = returnframe
         self.quitting = 0
-        # stoplineno >= 0 means: stop at line >= the stoplineno
-        # stoplineno -1 means: don't stop at all
-        self.stoplineno = stoplineno
 
     # Derived classes and clients can call the following methods
     # to affect the stepping state.
@@ -238,7 +235,9 @@ class Tbdb:
 
     def set_return(self, frame):
         """Stop when returning from the given frame."""
-        self._set_stopinfo(self.get_ic()+1,self.get_depth()-1,frame.f_back, frame)
+        #if we just executed a Call isntruction, we return up one level
+        offset = self.get_last_call_instuction() + 1 == self.get_ic()
+        self._set_stopinfo(self.get_ic()+1,self.get_depth() - offset,frame.f_back, frame)
 
     def set_rstep(self, n):
         self.redomode = True
@@ -251,7 +250,7 @@ class Tbdb:
         self._set_stopinfo(self.get_return_instruction(), -1, None, None)
 
     def set_rnext(self):
-        self._set_stopinfo(self.get_last_call_instuction(), -1, None, None)
+        self._set_stopinfo(max(self.get_last_call_instuction(),0), -1, None, None)
 
     def set_trace(self, frame=None):
         """Start debugging from `frame`.
@@ -270,7 +269,7 @@ class Tbdb:
 
     def set_continue(self):
         # Don't stop except at breakpoints or when finished
-        self._set_stopinfo(-1,-1,self.botframe, None, -1)
+        self._set_stopinfo(-1,-1,self.botframe, None)
 
     def set_quit(self):
         self.stopframe = self.botframe
