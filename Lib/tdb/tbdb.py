@@ -123,9 +123,6 @@ class Tbdb:
         return False
 
     def stop_here(self, frame, ic, depth):
-        # (CT) stopframe may now also be None, see dispatch_call.
-        # (CT) the former test for None is therefore removed from here.
-        # print "stop at", ic, depth, "?"
         if self.skip and \
                 self.is_skipped_module(frame.f_globals.get('__name__')):
             return False
@@ -137,16 +134,6 @@ class Tbdb:
 
         debug("Stop  at %s @ %s False \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth))
         return False
-        # if frame is self.stopframe:
-        #     if self.stoplineno == -1:
-        #         return False
-        #     return frame.f_lineno >= self.stoplineno
-        # while frame is not None and frame is not self.stopframe:
-        #     if frame is self.botframe:
-        #         print "srsly halp"
-        #         return True
-        #     frame = frame.f_back
-        # return False
 
     def break_here(self, frame):
         filename = self.canonic(frame.f_code.co_filename)
@@ -232,11 +219,6 @@ class Tbdb:
 
     # Derived classes and clients can call the following methods
     # to affect the stepping state.
-
-    def set_until(self, frame): #the name "until" is borrowed from gdb
-        """Stop when the line with the line no greater than the current one is
-        reached or when returning from current frame"""
-        self._set_stopinfo(-1,-1,frame, frame, frame.f_lineno+1)
 
     def set_step(self):
         """Stop after one line of code."""
@@ -500,37 +482,3 @@ class Tbdb:
 
 def set_trace():
     Tbdb().set_trace()
-
-
-class Tdb(Tbdb):
-    def user_call(self, frame, args):
-        name = frame.f_code.co_name
-        if not name: name = '???'
-        print '+++ call', name, args
-    def user_line(self, frame):
-        import linecache
-        name = frame.f_code.co_name
-        if not name: name = '???'
-        fn = self.canonic(frame.f_code.co_filename)
-        line = linecache.getline(fn, frame.f_lineno, frame.f_globals)
-        print '+++', fn, frame.f_lineno, name, ':', line.strip()
-    def user_return(self, frame, retval):
-        print '+++ return', retval
-    def user_exception(self, frame, exc_stuff):
-        print '+++ exception', exc_stuff
-        self.set_continue()
-
-def foo(n):
-    print 'foo(', n, ')'
-    x = bar(n*10)
-    print 'bar returned', x
-
-def bar(a):
-    print 'bar(', a, ')'
-    return a/2
-
-def test():
-    t = Tdb()
-    t.run('import bdb; bdb.foo(10)')
-
-# end

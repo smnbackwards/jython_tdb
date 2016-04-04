@@ -1,8 +1,7 @@
 #! /usr/bin/env python
 
-"""A Python debugger."""
+"""A Timetravelling Python debugger."""
 
-# (See pdb.doc for documentation.)
 
 import sys
 import linecache
@@ -21,7 +20,7 @@ class Restart(Exception):
     pass
 
 class ReExecute(Exception):
-    """Causes a debugger to be restarted for the debugged python program."""
+    """Causes a debugger to re-execute the debugged python program."""
     pass
 
 # Create a custom safe Repr instance and increase its maxstring.
@@ -71,49 +70,11 @@ class Pdb(Tbdb):
         self.stdout = self.controller.stdout
         self.stdin = self.controller.stdin
 
-
-        self.prompt = '(Tdb) '
-        self.aliases = {}
         self.mainpyfile = ''
         self._wait_for_mainpyfile = 0
         self._user_requested_quit = 0
-        # Try to load readline if it exists
-        try:
-            import readline
-        except ImportError:
-            pass
 
-        # Read $HOME/.pdbrc and ./.pdbrc
-        self.rcLines = []
-        if 'HOME' in os.environ:
-            envHome = os.environ['HOME']
-            try:
-                rcFile = open(os.path.join(envHome, ".pdbrc"))
-            except IOError:
-                pass
-            else:
-                for line in rcFile.readlines():
-                    self.rcLines.append(line)
-                rcFile.close()
-        try:
-            rcFile = open(".pdbrc")
-        except IOError:
-            pass
-        else:
-            for line in rcFile.readlines():
-                self.rcLines.append(line)
-            rcFile.close()
-
-        self.commands = {} # associates a command list to breakpoint numbers
-        self.commands_doprompt = {} # for each bp num, tells if the prompt
-        # must be disp. after execing the cmd list
-        self.commands_silent = {} # for each bp num, tells if the stack trace
-        # must be disp. after execing the cmd list
-        self.commands_defining = False # True while in the process of defining
-        # a command list
-        self.commands_bnum = None # The breakpoint number for which we are
-        # defining a list
-
+    #region state reseting
     def reset(self):
         Tbdb.reset(self)
         self.forget()
@@ -132,19 +93,7 @@ class Pdb(Tbdb):
         # locals whenever the .f_locals accessor is called, so we
         # cache it here to ensure that modifications are not overwritten.
         self.curframe_locals = self.curframe.f_locals
-        self.execRcLines()
-
-    # Can be executed earlier than 'setup' if desired
-    def execRcLines(self):
-        if self.rcLines:
-            # Make local copy because of recursion
-            rcLines = self.rcLines
-            # executed only once
-            self.rcLines = []
-            for line in rcLines:
-                line = line[:-1]
-                if len(line) > 0 and line[0] != '#':
-                    self.onecmd(line)
+    #endregion
 
     # Override Bdb methods
     #region user trace methods
@@ -168,32 +117,7 @@ class Pdb(Tbdb):
         """This function is called when we stop or break at this line."""
         if self.check_wait_for_mainpyfile(frame):
             return
-        if self.bp_commands(frame):
-            self.interaction(frame, None)
-
-    def bp_commands(self,frame):
-        """Call every command that was set for the current active breakpoint
-        (if there is one).
-
-        Returns True if the normal interaction function must be called,
-        False otherwise."""
-        # self.currentbp is set in bdb in Bdb.break_here if a breakpoint was hit
-        if getattr(self, "currentbp", False) and \
-                        self.currentbp in self.commands:
-            currentbp = self.currentbp
-            self.currentbp = 0
-            lastcmd_back = self.lastcmd
-            self.setup(frame, None)
-            for line in self.commands[currentbp]:
-                self.onecmd(line)
-            self.lastcmd = lastcmd_back
-            if not self.commands_silent[currentbp]:
-                self.print_stack_entry(self.stack[self.curindex])
-            if self.commands_doprompt[currentbp]:
-                self.cmdloop()
-            self.forget()
-            return
-        return 1
+        self.interaction(frame, None)
 
     def user_return(self, frame, ic, depth, return_value):
         """This function is called when a return trap is set here."""
@@ -241,33 +165,7 @@ class Pdb(Tbdb):
     # The argument is the remaining string on the command line
     # Return true to exit from the command loop
 
-    def do_commands(self, arg):
-        """Defines a list of commands associated to a breakpoint.
-
-        Those commands will be executed whenever the breakpoint causes
-        the program to stop execution."""
-        if not arg:
-            bnum = len(Breakpoint.bpbynumber)-1
-        else:
-            try:
-                bnum = int(arg)
-            except:
-                print >>self.stdout, "Usage : commands [bnum]\n        ..." \
-                                     "\n        end"
-                return
-        self.commands_bnum = bnum
-        self.commands[bnum] = []
-        self.commands_doprompt[bnum] = True
-        self.commands_silent[bnum] = False
-        prompt_back = self.prompt
-        self.prompt = '(com) '
-        self.commands_defining = True
-        try:
-            self.cmdloop()
-        finally:
-            self.commands_defining = False
-            self.prompt = prompt_back
-
+    #region Breakpoint commands
     def do_break(self, arg, temporary = 0):
         # break [ ([filename:]lineno | function) [, "condition"] ]
         if not arg:
@@ -351,6 +249,7 @@ class Pdb(Tbdb):
                                                                  bp.line)
 
     # To be overridden in derived debuggers
+
     def defaultFile(self):
         """Produce a reasonable default."""
         filename = self.curframe.f_code.co_filename
@@ -552,7 +451,9 @@ class Pdb(Tbdb):
             else:
                 print >>self.stdout, 'Deleted breakpoint', i
     do_cl = do_clear # 'c' is already an abbreviation for 'continue'
+    #endregion
 
+    #region Stack commands
     def do_where(self, arg):
         self.print_stack_trace()
     do_w = do_where
@@ -579,12 +480,9 @@ class Pdb(Tbdb):
             self.print_stack_entry(self.stack[self.curindex])
             self.lineno = None
     do_d = do_down
+    #endregion
 
-    def do_until(self, arg):
-        self.set_until(self.curframe)
-        return 1
-    do_unt = do_until
-
+    #region Navigation Commands
     def do_step(self, arg):
         self.set_step()
         return 1
@@ -618,8 +516,9 @@ class Pdb(Tbdb):
         self.set_continue()
         return 1
     do_c = do_cont = do_continue
+    #endregion
 
-    #region reverse commands
+    #region Reverse Navigation commands
     def re_execute(self):
         print "Stepping back to instruction", self.stopic
         try:
@@ -657,37 +556,7 @@ class Pdb(Tbdb):
 
     #endregion
 
-    def do_jump(self, arg):
-        if self.curindex + 1 != len(self.stack):
-            print >>self.stdout, "*** You can only jump within the bottom frame"
-            return
-        try:
-            arg = int(arg)
-        except ValueError:
-            print >>self.stdout, "*** The 'jump' command requires a line number."
-        else:
-            try:
-                # Do the jump, fix up our copy of the stack, and display the
-                # new position
-                self.curframe.f_lineno = arg
-                self.stack[self.curindex] = self.stack[self.curindex][0], arg
-                self.print_stack_entry(self.stack[self.curindex])
-            except ValueError, e:
-                print >>self.stdout, '*** Jump failed:', e
-    do_j = do_jump
-
-    def do_debug(self, arg):
-        sys.settrace(None)
-        globals = self.curframe.f_globals
-        locals = self.curframe_locals
-        p = Pdb(self.completekey, self.stdin, self.stdout)
-        p.prompt = "(%s) " % self.prompt.strip()
-        print >>self.stdout, "ENTERING RECURSIVE DEBUGGER"
-        sys.call_tracing(p.run, (arg, globals, locals))
-        print >>self.stdout, "LEAVING RECURSIVE DEBUGGER"
-        sys.settrace(self.trace_dispatch)
-        self.lastcmd = p.lastcmd
-
+    #region End Commands
     def do_quit(self, arg):
         self._user_requested_quit = 1
         self.set_quit()
@@ -701,7 +570,9 @@ class Pdb(Tbdb):
         self._user_requested_quit = 1
         self.set_quit()
         return 1
+    #endregion
 
+    #region Information Commands
     def do_args(self, arg):
         co = self.curframe.f_code
         dict = self.curframe_locals
@@ -818,29 +689,7 @@ class Pdb(Tbdb):
             return
         # None of the above...
         print >>self.stdout, type(value)
-
-    def do_alias(self, arg):
-        args = arg.split()
-        if len(args) == 0:
-            keys = self.aliases.keys()
-            keys.sort()
-            for alias in keys:
-                print >>self.stdout, "%s = %s" % (alias, self.aliases[alias])
-            return
-        if args[0] in self.aliases and len(args) == 1:
-            print >>self.stdout, "%s = %s" % (args[0], self.aliases[args[0]])
-        else:
-            self.aliases[args[0]] = ' '.join(args[1:])
-
-    def do_unalias(self, arg):
-        args = arg.split()
-        if len(args) == 0: return
-        if args[0] in self.aliases:
-            del self.aliases[args[0]]
-
-    #list of all the commands making the program resume execution.
-    commands_resuming = ['do_continue', 'do_step', 'do_next', 'do_return',
-                         'do_quit', 'do_jump']
+    #endregion
 
     # Print a traceback starting at the top stack frame.
     # The most recently entered frame is printed last;
@@ -1009,19 +858,6 @@ Continue execution until the current function returns."""
         print >>self.stdout, """c(ont(inue))
 Continue execution, only stop when a breakpoint is encountered."""
 
-    def help_jump(self):
-        self.help_j()
-
-    def help_j(self):
-        print >>self.stdout, """j(ump) lineno
-Set the next line that will be executed."""
-
-    def help_debug(self):
-        print >>self.stdout, """debug code
-Enter a recursive debugger that steps through the code argument
-(which is an arbitrary expression or statement to be executed
-in the current environment)."""
-
     def help_list(self):
         self.help_l()
 
@@ -1086,69 +922,6 @@ Prints the type of the argument."""
         print >>self.stdout, """EOF
 Handles the receipt of EOF as a command."""
 
-    def help_alias(self):
-        print >>self.stdout, """alias [name [command [parameter parameter ...]]]
-Creates an alias called 'name' the executes 'command'.  The command
-must *not* be enclosed in quotes.  Replaceable parameters are
-indicated by %1, %2, and so on, while %* is replaced by all the
-parameters.  If no command is given, the current alias for name
-is shown. If no name is given, all aliases are listed.
-
-Aliases may be nested and can contain anything that can be
-legally typed at the pdb prompt.  Note!  You *can* override
-internal pdb commands with aliases!  Those internal commands
-are then hidden until the alias is removed.  Aliasing is recursively
-applied to the first word of the command line; all other words
-in the line are left alone.
-
-Some useful aliases (especially when placed in the .pdbrc file) are:
-
-#Print instance variables (usage "pi classInst")
-alias pi for k in %1.__dict__.keys(): print "%1.",k,"=",%1.__dict__[k]
-
-#Print instance variables in self
-alias ps pi self
-"""
-
-    def help_unalias(self):
-        print >>self.stdout, """unalias name
-Deletes the specified alias."""
-
-    def help_commands(self):
-        print >>self.stdout, """commands [bpnumber]
-(com) ...
-(com) end
-(Pdb)
-
-Specify a list of commands for breakpoint number bpnumber.  The
-commands themselves appear on the following lines.  Type a line
-containing just 'end' to terminate the commands.
-
-To remove all commands from a breakpoint, type commands and
-follow it immediately with  end; that is, give no commands.
-
-With no bpnumber argument, commands refers to the last
-breakpoint set.
-
-You can use breakpoint commands to start your program up again.
-Simply use the continue command, or step, or any other
-command that resumes execution.
-
-Specifying any command resuming execution (currently continue,
-step, next, return, jump, quit and their abbreviations) terminates
-the command list (as if that command was immediately followed by end).
-This is because any time you resume execution
-(even with a simple next or step), you may encounter
-another breakpoint--which could have its own command list, leading to
-ambiguities about which list to execute.
-
-   If you use the 'silent' command in the command list, the
-usual message about stopping at a breakpoint is not printed.  This may
-be desirable for breakpoints that are to print a specific message and
-then continue.  If none of the other commands print anything, you
-see no sign that the breakpoint was reached.
-"""
-
     def help_pdb(self):
         help()
 
@@ -1183,14 +956,14 @@ see no sign that the breakpoint was reached.
         # __main__ will break).
         #
         # So we clear up the __main__ and set several special variables
-        # (this gets rid of pdb's globals and cleans old variables on restarts).
+        # (this gets rid of tpdb's globals and cleans old variables on restarts).
         import __main__
         __main__.__dict__.clear()
         __main__.__dict__.update({"__name__"    : "__main__",
                                   "__file__"    : filename,
                                   "__builtins__": __builtins__,
                                   })
-        # When bdb sets tracing, a number of call and line events happens
+        # When tbdb sets tracing, a number of call and line events happens
         # BEFORE debugger even reaches user's code (and the exact sequence of
         # events depends on python version). So we take special measures to
         # avoid stopping before we reach the main script (see user_line and
@@ -1218,45 +991,6 @@ def runcall(*args, **kwds):
 
 def set_trace():
     Pdb().set_trace(sys._getframe().f_back)
-
-# Post-Mortem interface
-
-def post_mortem(t=None):
-    # handling the default
-    if t is None:
-        # sys.exc_info() returns (type, value, traceback) if an exception is
-        # being handled, otherwise it returns None
-        t = sys.exc_info()[2]
-        if t is None:
-            raise ValueError("A valid traceback must be passed if no "
-                             "exception is being handled")
-
-    p = Pdb()
-    p.reset()
-    p.interaction(None, t)
-
-def pm():
-    post_mortem(sys.last_traceback)
-
-
-# Main program for testing
-
-TESTCMD = 'import x; x.main()'
-
-def test():
-    run(TESTCMD)
-
-# print help
-def help():
-    for dirname in sys.path:
-        fullname = os.path.join(dirname, 'pdb.doc')
-        if os.path.exists(fullname):
-            sts = os.system('${PAGER-more} '+fullname)
-            if sts: print '*** Pager exit status:', sts
-            break
-    else:
-        print 'Sorry, can\'t find the help file "pdb.doc"',
-        print 'along the Python search path'
 
 def mainloop(pdb, mainpyfile):
     while True:

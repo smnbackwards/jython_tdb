@@ -9,8 +9,6 @@ class CommandLineController(Controller, cmd.Cmd):
         Controller.__init__(self)
         cmd.Cmd.__init__(self,completekey='tab', stdin=None, stdout=None)
 
-        self.aliases = {}
-
     do_h = cmd.Cmd.do_help
 
     def output(self, *objects):
@@ -59,28 +57,18 @@ class CommandLineController(Controller, cmd.Cmd):
             self.output('***', exc_type_name + ':', v)
 
     def precmd(self, line):
-        """Handle alias expansion and ';;' separator."""
+        """Handle ';;' separator."""
         if not line.strip():
             return line
         args = line.split()
-        while args[0] in self.aliases:
-            line = self.aliases[args[0]]
-            ii = 1
-            for tmpArg in args[1:]:
-                line = line.replace("%" + str(ii),
-                                    tmpArg)
-                ii = ii + 1
-            line = line.replace("%*", ' '.join(args[1:]))
-            args = line.split()
-        # split into ';;' separated commands
+                # split into ';;' separated commands
         # unless it's an alias command
-        if args[0] != 'alias':
-            marker = line.find(';;')
-            if marker >= 0:
-                # queue up everything after marker
-                next = line[marker+2:].lstrip()
-                self.cmdqueue.append(next)
-                line = line[:marker].rstrip()
+        marker = line.find(';;')
+        if marker >= 0:
+            # queue up everything after marker
+            next = line[marker+2:].lstrip()
+            self.cmdqueue.append(next)
+            line = line[:marker].rstrip()
         return line
 
     def onecmd(self, line):
