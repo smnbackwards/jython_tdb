@@ -414,7 +414,7 @@ class Tbdb:
         if line: s = s + lprefix + line.strip()
         return s
 
-    # The following two methods can be called by clients to use
+    # The following method can be called by clients to use
     # a debugger to debug a statement, given as a string.
 
     def run(self, cmd, globals=None, locals=None):
@@ -434,44 +434,3 @@ class Tbdb:
         finally:
             self.quitting = 1
             sys.settrace(None)
-
-    def runeval(self, expr, globals=None, locals=None):
-        if globals is None:
-            import __main__
-            globals = __main__.__dict__
-        if locals is None:
-            locals = globals
-        self.reset()
-        sys.settrace(self.trace_dispatch)
-        if not isinstance(expr, types.CodeType):
-            expr = expr+'\n'
-        try:
-            return eval(expr, globals, locals)
-        except BdbQuit:
-            pass
-        finally:
-            self.quitting = 1
-            sys.settrace(None)
-
-    def runctx(self, cmd, globals, locals):
-        # B/W compatibility
-        self.run(cmd, globals, locals)
-
-    # This method is more useful to debug a single function call.
-
-    def runcall(self, func, *args, **kwds):
-        self.reset()
-        sys.settrace(self.trace_dispatch)
-        res = None
-        try:
-            res = func(*args, **kwds)
-        except BdbQuit:
-            pass
-        finally:
-            self.quitting = 1
-            sys.settrace(None)
-        return res
-
-
-def set_trace():
-    Tbdb().set_trace()

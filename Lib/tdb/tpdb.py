@@ -1,6 +1,10 @@
 #! /usr/bin/env python
 
-"""A Timetravelling Python debugger."""
+"""A Timetravelling Python debugger.
+    This code is based on pdb.py from the Python standard library
+    The main modifications are to the treatment of navigation commands
+        ie do_step, do_rstep
+"""
 
 
 import sys
@@ -29,8 +33,7 @@ _repr = Repr()
 _repr.maxstring = 200
 _saferepr = _repr.repr
 
-__all__ = ["run", "pm", "TPdb", "runeval", "runctx", "runcall", "set_trace",
-           "post_mortem", "help"]
+__all__ = ["Tpdb"]
 
 def find_function(funcname, filename):
     cre = re.compile(r'def\s+%s\s*[(]' % re.escape(funcname))
@@ -60,7 +63,7 @@ def find_function(funcname, filename):
 # line_prefix = ': '    # Use this to get the old situation back
 line_prefix = '\n-> '   # Probably a better default
 
-class Pdb(Tbdb):
+class Tpdb(Tbdb):
 
     def __init__(self, controller = CommandLineController(), skip=None):
         Tbdb.__init__(self, skip=skip)
@@ -135,6 +138,10 @@ class Pdb(Tbdb):
         exc_type, exc_value, exc_traceback = exc_info
         frame.f_locals['__exception__'] = exc_type, exc_value
 
+        # Jython bubbles exceptions in a strange way
+        # Without this if statement, the user would need to 'step' a number of times
+        # to allow the exception to be propagated to the handler in mainloop()
+        # this keeps 'interaction()' from being called, so the process is transparent to the user
         if exc_type == Restart:
             raise Restart
         elif exc_type == ReExecute:
@@ -549,8 +556,6 @@ class Pdb(Tbdb):
         self.re_execute()
 
     def do_rnext(self, arg):
-        #TODO if the previous instruction was not a return, then stop_ic = instruction_count() - 1
-        #TODO if result is -1
         self.set_rnext()
         self.re_execute()
 
@@ -716,7 +721,7 @@ class Pdb(Tbdb):
                                                      prompt_prefix)
 
 
-    # Help methods (derived from pdb.doc)
+    # Help methods
     #region Help
 
     def help_help(self):
@@ -885,17 +890,6 @@ Print the value of the expression."""
         print >>self.stdout, """pp expression
 Pretty-print the value of the expression."""
 
-    def help_exec(self):
-        print >>self.stdout, """(!) statement
-Execute the (one-line) statement in the context of
-the current stack frame.
-The exclamation point can be omitted unless the first word
-of the statement resembles a debugger command.
-To assign to a global variable you must always prefix the
-command with a 'global' command, e.g.:
-(Pdb) global list_options; list_options = ['-l']
-(Pdb)"""
-
     def help_run(self):
         print """run [args...]
 Restart the debugged python program. If a string is supplied, it is
@@ -921,10 +915,6 @@ Prints the type of the argument."""
     def help_EOF(self):
         print >>self.stdout, """EOF
 Handles the receipt of EOF as a command."""
-
-    def help_pdb(self):
-        help()
-
     #endregion
 
     def lookupmodule(self, filename):
@@ -974,34 +964,16 @@ Handles the receipt of EOF as a command."""
         statement = 'execfile(%r)' % filename
         self.run(statement)
 
-# Simplified interface
-
-def run(statement, globals=None, locals=None):
-    Pdb().run(statement, globals, locals)
-
-def runeval(expression, globals=None, locals=None):
-    return Pdb().runeval(expression, globals, locals)
-
-def runctx(statement, globals, locals):
-    # B/W compatibility
-    run(statement, globals, locals)
-
-def runcall(*args, **kwds):
-    return Pdb().runcall(*args, **kwds)
-
-def set_trace():
-    Pdb().set_trace(sys._getframe().f_back)
-
-def mainloop(pdb, mainpyfile):
+def mainloop(tpdb, mainpyfile):
     while True:
         try:
-            pdb._runscript(mainpyfile)
-            if pdb._user_requested_quit:
+            tpdb._runscript(mainpyfile)
+            if tpdb._user_requested_quit:
                 break
-            print "The program finished after executing", pdb.get_ic() ,"instructions and will be restarted"
+            print "The program finished after executing", tpdb.get_ic() , "instructions and will be restarted"
         except ReExecute:
             print "Re-executing from beginning"
-            pdb.redomode = True
+            tpdb.redomode = True
             pass
         except Restart:
             print "Restarting", mainpyfile, "with arguments:"
@@ -1015,14 +987,14 @@ def mainloop(pdb, mainpyfile):
             print "Uncaught exception. Entering post mortem debugging"
             print "Running 'cont' or 'step' will restart the program"
             t = sys.exc_info()[2]
-            pdb.interaction(None, t) # TODO update with ic and depth
+            tpdb.interaction(None, t)
             print "Post mortem debugger finished. The " + mainpyfile + \
                   " will be restarted"
 
 
 def main():
     if not sys.argv[1:] or sys.argv[1] in ("--help", "-h"):
-        print "usage: pdb.py scriptfile [arg] ..."
+        print "usage: tpdb.py scriptfile [arg] ..."
         sys.exit(2)
 
     mainpyfile =  sys.argv[1]     # Get script filename
@@ -1030,17 +1002,17 @@ def main():
         print 'Error:', mainpyfile, 'does not exist'
         sys.exit(1)
 
-    del sys.argv[0]         # Hide "pdb.py" from argument list
+    del sys.argv[0]         # Hide "tpdb.py" from argument list
 
-    # Replace pdb's dir with script's dir in front of module search path.
+    # Replace tpdb's dir with script's dir in front of module search path.
     sys.path[0] = os.path.dirname(mainpyfile)
 
     # Note on saving/restoring sys.argv: it's a good idea when sys.argv was
     # modified by the script being debugged. It's a bad idea when it was
     # changed by the user from the command line. There is a "restart" command
     # which allows explicit specification of command line arguments.
-    pdb = Pdb()
-    mainloop(pdb,mainpyfile)
+    tpdb = Tpdb()
+    mainloop(tpdb,mainpyfile)
 
 
 # When invoked as main program, invoke the debugger on a script

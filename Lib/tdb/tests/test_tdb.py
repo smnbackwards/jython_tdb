@@ -29,7 +29,7 @@ class _FakeInput:
 
 
 class TestInput(object):
-    """Context manager that makes testing Pdb in doctests easier."""
+    """Context manager that makes testing Tpdb in doctests easier."""
 
     def __init__(self, input):
         self.input = input
@@ -46,10 +46,10 @@ class TestInput(object):
         sys.stdout = self.real_stdout
 
 
-class TestTdb(tpdb.Pdb):
+class TestTdb(tpdb.Tpdb):
     def __init__(self, skip=None):
         # controller must be set here in order for stdout to be swallowed
-        tpdb.Pdb.__init__(self, controller=commandlinecontroller.CommandLineController(), skip=skip)
+        tpdb.Tpdb.__init__(self, controller=commandlinecontroller.CommandLineController(), skip=skip)
         self.instructionsStoppedAt = []
         # don't restart debugging
         self._user_requested_quit = 1
@@ -57,7 +57,7 @@ class TestTdb(tpdb.Pdb):
     def interaction(self, frame, traceback):
         if not self.redomode:
             self.instructionsStoppedAt.append(self.get_ic())
-            tpdb.Pdb.interaction(self, frame, traceback)
+            tpdb.Tpdb.interaction(self, frame, traceback)
 
 
 class PdbTestCase(unittest.TestCase):

@@ -1,4 +1,3 @@
-from __future__ import print_function
 import cmd
 import sys
 from .controller import Controller
@@ -11,12 +10,6 @@ class CommandLineController(Controller, cmd.Cmd):
 
     do_h = cmd.Cmd.do_help
 
-    def output(self, *objects):
-        print(*objects, file=self.stdout, end=' ')
-
-    def outputln(self, *objects):
-        print(*objects, file=self.stdout)
-
     def get_cmd(self):
         self.cmdloop()
 
@@ -26,7 +19,7 @@ class CommandLineController(Controller, cmd.Cmd):
         """
         # reproduce the behavior of the standard displayhook, not printing None
         if obj is not None:
-            self.output(repr(obj))
+            print >> self.stdout, repr(obj)
 
     def preloop(self):
         self.prompt = "(Tdb)<%s>"%self.debugger.get_ic()
@@ -54,7 +47,7 @@ class CommandLineController(Controller, cmd.Cmd):
             if type(t) == type(''):
                 exc_type_name = t
             else: exc_type_name = t.__name__
-            self.output('***', exc_type_name + ':', v)
+            print >> self.stdout, '***', exc_type_name + ':', v
 
     def precmd(self, line):
         """Handle ';;' separator."""
