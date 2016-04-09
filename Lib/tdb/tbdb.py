@@ -1,4 +1,9 @@
-
+'''
+The base debugger for Tdb
+This code is a modified version of 'bdb.py'
+The majority of modifications are found in the handling of navigation
+    ie 'trace_distpatch', 'dispatch_' methods, 'set_' methods and 'stop_here'
+'''
 import fnmatch
 import sys
 import os
@@ -6,7 +11,7 @@ import types
 import _tdb
 from .breakpoint import Breakpoint, effective, checkfuncname
 
-__all__ = ["BdbQuit","TBdb"]
+__all__ = ["BdbQuit","Tbdb"]
 
 class BdbQuit(Exception):
     """Exception to give up completely"""
@@ -24,9 +29,15 @@ class Tbdb:
         self.breaks = {}
         self.fncache = {}
 
+        # The instruction count to stop at
         self.stopic = -1
+
+        #The call depth to stop at
         self.stopdepth = -1
+
+        #Whether the debugger is re-executing
         self.redomode = False
+
         self.quitting = 0
 
 
@@ -44,10 +55,11 @@ class Tbdb:
         import linecache
         linecache.checkcache()
         if not self.redomode:
+            # Reset the stop values to stop at instruction count 0 at any depth
+            # If we are re-executing values have already been set
             self._set_stopinfo(0, -1)
-        else:
-            self._set_stopinfo(self.stopic, self.stopdepth)
         _tdb.reset_instruction_count()
+        self.quitting = 0
 
     def trace_dispatch(self, frame, event, arg):
         if self.quitting:
@@ -77,22 +89,18 @@ class Tbdb:
 
     def dispatch_line(self, frame, ic, depth):
         if self.stop_here(frame, ic, depth) or self.break_here(frame):
-            self.redomode = False
             self.user_line(frame, ic, depth)
 
     def dispatch_call(self, frame, ic, depth, arg):
         if self.stop_here(frame,ic,depth):
-            self.redomode = False
             self.user_call(frame, ic, depth, arg)
 
     def dispatch_return(self, frame, ic, depth, arg):
         if self.stop_here(frame, ic, depth):
-            self.redomode = False
             self.user_return(frame, ic, depth, arg)
 
     def dispatch_exception(self, frame, ic, depth, arg):
         if self.stop_here(frame, ic, depth):
-            self.redomode = False
             self.user_exception(frame, ic, depth, arg)
 
     # Normally derived classes don't override the following
@@ -113,6 +121,7 @@ class Tbdb:
         if self.stopic >= 0 and ic >= self.stopic :
             if self.stopdepth == -1 or self.stopdepth == depth :
                 debug("Stop  at %s @ %s True \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth))
+                self.redomode = False
                 return True
 
         debug("Stop  at %s @ %s False \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth))
@@ -173,11 +182,10 @@ class Tbdb:
     def get_depth(self):
         return _tdb.call_depth()
 
-    def get_return_instruction(self):
-        return _tdb.get_return_instruction()
-
     def get_last_call_instuction(self):
-        return _tdb.get_last_call_instuction()
+        ic = _tdb.get_last_call_instuction()
+        assert ic >= 0
+        return ic
 
 
 
@@ -185,18 +193,18 @@ class Tbdb:
         debug("Stop info set at %s %s"%(stopic, stopdepth))
         self.stopic = stopic
         self.stopdepth = stopdepth
-
+        # make sure the debugger doesn't try to exit since we now want to stop somewhere
         self.quitting = 0
 
     # Derived classes and clients can call the following methods
     # to affect the stepping state.
 
     def set_step(self):
-        """Stop after one line of code."""
+        """Stop at next instruction at any depth"""
         self._set_stopinfo(self.get_ic() + 1, -1)
 
     def set_next(self, frame):
-        """Stop on the next line in or below the given frame."""
+        """Stop on the next line in or below the current depth"""
         self._set_stopinfo(self.get_ic() + 1, self.get_depth())
 
     def set_return(self, frame):
@@ -206,14 +214,13 @@ class Tbdb:
         self._set_stopinfo(self.get_ic() + 1, self.get_depth() - offset)
 
     def set_rstep(self, n):
-        self.redomode = True
         if n < 0:
             self._set_stopinfo(self.get_ic() + n, -1)
         else :
             self._set_stopinfo(n, -1)
 
     def set_rreturn(self):
-        self._set_stopinfo(self.get_return_instruction() - 1, -1)
+        self._set_stopinfo(max(self.get_last_call_instuction() - 1, 0), -1)
 
     def set_rnext(self):
         self._set_stopinfo(max(self.get_last_call_instuction() - 1, 0), -1)
