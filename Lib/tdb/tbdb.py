@@ -23,13 +23,10 @@ class Tbdb:
         self.skip = set(skip) if skip else None
         self.breaks = {}
         self.fncache = {}
-        self.frame_returning = None
 
         self.stopic = -1
         self.stopdepth = -1
         self.redomode = False
-        self.stopframe = None
-        self.returnframe = None
         self.quitting = 0
 
 
@@ -46,11 +43,10 @@ class Tbdb:
     def reset(self):
         import linecache
         linecache.checkcache()
-        self.botframe = None
         if not self.redomode:
-            self._set_stopinfo(0,-1, None, None)
+            self._set_stopinfo(0, -1)
         else:
-            self._set_stopinfo(self.stopic, self.stopdepth, None, None)
+            self._set_stopinfo(self.stopic, self.stopdepth)
         _tdb.reset_instruction_count()
 
     def trace_dispatch(self, frame, event, arg):
@@ -75,44 +71,29 @@ class Tbdb:
         else:
             print 'idb: unknown debugging event:', repr(event)
 
+        if self.quitting: raise BdbQuit
+
         return self.trace_dispatch
 
     def dispatch_line(self, frame, ic, depth):
         if self.stop_here(frame, ic, depth) or self.break_here(frame):
             self.redomode = False
             self.user_line(frame, ic, depth)
-            if self.quitting: raise BdbQuit
 
     def dispatch_call(self, frame, ic, depth, arg):
-        # XXX 'arg' is no longer used
-        if self.botframe is None:
-            # First call of dispatch since reset()
-            self.botframe = frame.f_back # (CT) Note that this may also be None!
-            # debug("dispatch call returned early")
-            # return self.trace_dispatch
         if self.stop_here(frame,ic,depth):
             self.redomode = False
             self.user_call(frame, ic, depth, arg)
-            if self.quitting: raise BdbQuit
 
     def dispatch_return(self, frame, ic, depth, arg):
-        # if not(frame == self.returnframe == self.stop_here(frame, ic, depth)):
-        #     debug("return frame =[")
-        #     assert False
         if self.stop_here(frame, ic, depth):
-            try:
-                self.frame_returning = frame
-                self.redomode = False
-                self.user_return(frame, ic, depth, arg)
-            finally:
-                self.frame_returning = None
-            if self.quitting: raise BdbQuit
+            self.redomode = False
+            self.user_return(frame, ic, depth, arg)
 
     def dispatch_exception(self, frame, ic, depth, arg):
         if self.stop_here(frame, ic, depth):
             self.redomode = False
             self.user_exception(frame, ic, depth, arg)
-            if self.quitting: raise BdbQuit
 
     # Normally derived classes don't override the following
     # methods, but they may if they want to redefine the
@@ -200,13 +181,11 @@ class Tbdb:
 
 
 
-    def _set_stopinfo(self, stopic, stopdepth, stopframe, returnframe):
+    def _set_stopinfo(self, stopic, stopdepth):
         debug("Stop info set at %s %s"%(stopic, stopdepth))
         self.stopic = stopic
         self.stopdepth = stopdepth
 
-        self.stopframe = stopframe
-        self.returnframe = returnframe
         self.quitting = 0
 
     # Derived classes and clients can call the following methods
@@ -214,61 +193,36 @@ class Tbdb:
 
     def set_step(self):
         """Stop after one line of code."""
-        # Issue #13183: pdb skips frames after hitting a breakpoint and running
-        # step commands.
-        # Restore the trace function in the caller (that may not have been set
-        # for performance reasons) when returning from the current frame.
-        if self.frame_returning:
-            caller_frame = self.frame_returning.f_back
-            if caller_frame and not caller_frame.f_trace:
-                caller_frame.f_trace = self.trace_dispatch
-        self._set_stopinfo(self.get_ic()+1,-1,None, None)
+        self._set_stopinfo(self.get_ic() + 1, -1)
 
     def set_next(self, frame):
         """Stop on the next line in or below the given frame."""
-        self._set_stopinfo(self.get_ic()+1,self.get_depth(),frame, None)
+        self._set_stopinfo(self.get_ic() + 1, self.get_depth())
 
     def set_return(self, frame):
         """Stop when returning from the given frame."""
         #if we just executed a Call isntruction, we return up one level
         offset = self.get_last_call_instuction() == self.get_ic()
-        self._set_stopinfo(self.get_ic()+1,self.get_depth() - offset,frame.f_back, frame)
+        self._set_stopinfo(self.get_ic() + 1, self.get_depth() - offset)
 
     def set_rstep(self, n):
         self.redomode = True
         if n < 0:
-            self._set_stopinfo(self.get_ic()+n, -1, None, None)
+            self._set_stopinfo(self.get_ic() + n, -1)
         else :
-            self._set_stopinfo(n, -1, None, None)
+            self._set_stopinfo(n, -1)
 
     def set_rreturn(self):
-        self._set_stopinfo(self.get_return_instruction()-1, -1, None, None)
+        self._set_stopinfo(self.get_return_instruction() - 1, -1)
 
     def set_rnext(self):
-        self._set_stopinfo(max(self.get_last_call_instuction()-1,0), -1, None, None)
-
-    def set_trace(self, frame=None):
-        """Start debugging from `frame`.
-
-        If frame is not specified, debugging starts from caller's frame.
-        """
-        if frame is None:
-            frame = sys._getframe().f_back
-        self.reset()
-        while frame:
-            frame.f_trace = self.trace_dispatch
-            self.botframe = frame
-            frame = frame.f_back
-        self.set_step()
-        sys.settrace(self.trace_dispatch)
+        self._set_stopinfo(max(self.get_last_call_instuction() - 1, 0), -1)
 
     def set_continue(self):
         # Don't stop except at breakpoints or when finished
-        self._set_stopinfo(-1,-1,self.botframe, None)
+        self._set_stopinfo(-1, -1)
 
     def set_quit(self):
-        self.stopframe = self.botframe
-        self.returnframe = None
         self.quitting = 1
         sys.settrace(None)
 
@@ -373,10 +327,11 @@ class Tbdb:
         stack = []
         if t and t.tb_frame is f:
             t = t.tb_next
-        while f is not None:
-            stack.append((f, f.f_lineno))
-            if f is self.botframe:
+        depth = self.get_depth()
+        for d in range(depth+1):
+            if f is None:
                 break
+            stack.append((f, f.f_lineno))
             f = f.f_back
         stack.reverse()
         i = max(0, len(stack) - 1)
