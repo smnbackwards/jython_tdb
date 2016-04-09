@@ -998,7 +998,7 @@ def mainloop(pdb, mainpyfile):
             pdb._runscript(mainpyfile)
             if pdb._user_requested_quit:
                 break
-            print "The program finished and will be restarted"
+            print "The program finished after executing", pdb.get_ic() ,"instructions and will be restarted"
         except ReExecute:
             print "Re-executing from beginning"
             pdb.redomode = True

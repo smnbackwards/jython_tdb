@@ -51,7 +51,6 @@ class TestTdb(tpdb.Pdb):
         # controller must be set here in order for stdout to be swallowed
         tpdb.Pdb.__init__(self, controller=commandlinecontroller.CommandLineController(), skip=skip)
         self.instructionsStoppedAt = []
-        self.finalinstructioncount = -1
         # don't restart debugging
         self._user_requested_quit = 1
 
@@ -59,10 +58,6 @@ class TestTdb(tpdb.Pdb):
         if not self.redomode:
             self.instructionsStoppedAt.append(self.get_ic())
             tpdb.Pdb.interaction(self, frame, traceback)
-
-    def on_end(self):
-        tpdb.Pdb.on_end(self)
-        self.finalinstructioncount = self.get_ic()
 
 
 class PdbTestCase(unittest.TestCase):
@@ -97,11 +92,11 @@ class PdbTestCase(unittest.TestCase):
             if instructions:
                 self.assertSequenceEqual(instructions, debugger.instructionsStoppedAt)
             if total_instructions >= 0:
-                self.assertEqual(total_instructions, debugger.finalinstructioncount)
+                self.assertEqual(total_instructions, debugger.get_ic())
             if commands_remaining >= 0:
                 self.assertEqual(0, len(ti.input))
 
-    def _test_fib(self, commands, instructions, total_instructions=24, commands_remaining=0):
+    def _test_fib(self, commands, instructions, total_instructions=23, commands_remaining=0):
         self._test('examples/fib.py', commands, instructions, total_instructions, commands_remaining)
 
     def test_step_all(self):
@@ -131,6 +126,15 @@ class PdbTestCase(unittest.TestCase):
             'continue',
         ],
             [0, 1, 2, 3, 4, 16, 20, 21, 22])
+
+    # TODO: new scenario that doesn't fit the return stack model
+    # def test_return_from_main(self):
+    #     self._test_fib([
+    #         'return',
+    #         'quit',
+    #     ],
+    #         [0, 21],
+    #         total_instructions=-1)
 
     def test_return(self):
         self._test_fib([

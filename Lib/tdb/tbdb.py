@@ -12,6 +12,7 @@ class BdbQuit(Exception):
     """Exception to give up completely"""
 
 debug_enabled = 0
+# debug_enabled = 1
 def debug(output):
     if debug_enabled :
         print >> sys.stderr, output
@@ -66,8 +67,9 @@ class Tbdb:
             self.dispatch_call(frame, ic, depth, arg)
         elif event == 'return':
             self.dispatch_return(frame, ic, depth, arg)
-            if self.get_depth() == 0:
+            if self.get_depth() == 0 :
                 sys.settrace(None)
+                return None
         elif event == 'exception':
             self.dispatch_exception(frame, ic, depth, arg)
         else:
@@ -165,9 +167,6 @@ class Tbdb:
 
     # Derived classes should override the user_* methods
     # to gain control.
-    def on_end(self):
-        pass
-
     def user_call(self, frame, ic, depth, argument_list):
         """This method is called when there is the remote possibility
         that we ever need to stop in this function."""
@@ -187,21 +186,17 @@ class Tbdb:
         but only if we are to stop at or just below this level."""
         pass
 
-    # Terrible hardcoded hacks, but they will do for now
-    # TODO do this 'correctly'
-    _instruction_offset = 4
-    _depth_offset = 2
     def get_ic(self):
-        return _tdb.instruction_count() - self._instruction_offset
+        return _tdb.instruction_count()
 
     def get_depth(self):
-        return _tdb.call_depth() - self._depth_offset
+        return _tdb.call_depth()
 
     def get_return_instruction(self):
-        return _tdb.get_return_instruction() - self._instruction_offset
+        return _tdb.get_return_instruction()
 
     def get_last_call_instuction(self):
-        return _tdb.get_last_call_instuction() - self._instruction_offset
+        return _tdb.get_last_call_instuction()
 
 
 
@@ -236,7 +231,7 @@ class Tbdb:
     def set_return(self, frame):
         """Stop when returning from the given frame."""
         #if we just executed a Call isntruction, we return up one level
-        offset = self.get_last_call_instuction() + 1 == self.get_ic()
+        offset = self.get_last_call_instuction() == self.get_ic()
         self._set_stopinfo(self.get_ic()+1,self.get_depth() - offset,frame.f_back, frame)
 
     def set_rstep(self, n):
@@ -247,10 +242,10 @@ class Tbdb:
             self._set_stopinfo(n, -1, None, None)
 
     def set_rreturn(self):
-        self._set_stopinfo(self.get_return_instruction(), -1, None, None)
+        self._set_stopinfo(self.get_return_instruction()-1, -1, None, None)
 
     def set_rnext(self):
-        self._set_stopinfo(max(self.get_last_call_instuction(),0), -1, None, None)
+        self._set_stopinfo(max(self.get_last_call_instuction()-1,0), -1, None, None)
 
     def set_trace(self, frame=None):
         """Start debugging from `frame`.
@@ -437,7 +432,6 @@ class Tbdb:
         except BdbQuit:
             pass
         finally:
-            self.on_end()
             self.quitting = 1
             sys.settrace(None)
 
