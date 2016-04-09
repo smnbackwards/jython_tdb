@@ -74,7 +74,6 @@ class Tpdb(Tbdb):
         self.stdin = self.controller.stdin
 
         self.mainpyfile = ''
-        self._wait_for_mainpyfile = 0
         self._user_requested_quit = 0
 
     #region state reseting
@@ -100,32 +99,18 @@ class Tpdb(Tbdb):
 
     # Override Bdb methods
     #region user trace methods
-    def check_wait_for_mainpyfile(self, frame):
-        if self._wait_for_mainpyfile:
-            if (self.mainpyfile != self.canonic(frame.f_code.co_filename)
-                or frame.f_lineno<= 0):
-                return True
-            self._wait_for_mainpyfile = 0
-        return False
-
     def user_call(self, frame, ic, depth, argument_list):
         """This method is called when there is the remote possibility
         that we ever need to stop in this function."""
-        if self.check_wait_for_mainpyfile(frame):
-            return
         print >>self.stdout, '--Call--'
         self.interaction(frame, None)
 
     def user_line(self, frame, ic, depth):
         """This function is called when we stop or break at this line."""
-        if self.check_wait_for_mainpyfile(frame):
-            return
         self.interaction(frame, None)
 
     def user_return(self, frame, ic, depth, return_value):
         """This function is called when a return trap is set here."""
-        if self.check_wait_for_mainpyfile(frame):
-            return
         frame.f_locals['__return__'] = return_value
         print >>self.stdout, '--Return--'
         self.interaction(frame, None)
@@ -133,8 +118,6 @@ class Tpdb(Tbdb):
     def user_exception(self, frame, ic, depth, exc_info):
         """This function is called if an exception occurs,
         but only if we are to stop at or just below this level."""
-        if self.check_wait_for_mainpyfile(frame):
-            return
         exc_type, exc_value, exc_traceback = exc_info
         frame.f_locals['__exception__'] = exc_type, exc_value
 
@@ -958,7 +941,6 @@ Handles the receipt of EOF as a command."""
         # events depends on python version). So we take special measures to
         # avoid stopping before we reach the main script (see user_line and
         # user_call for details).
-        self._wait_for_mainpyfile = 1
         self.mainpyfile = self.canonic(filename)
         # self._user_requested_quit = 0
         statement = 'execfile(%r)' % filename
