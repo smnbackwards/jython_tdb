@@ -61,6 +61,11 @@ class Tbdb:
         _tdb.reset_instruction_count()
         self.quitting = 0
 
+    def trace_start(self, frame, event, arg):
+        self.botframe = frame
+        sys.settrace(self.trace_dispatch)
+        return self.trace_dispatch(frame,event,arg)
+
     def trace_dispatch(self, frame, event, arg):
         if self.quitting:
             return  # None
@@ -334,11 +339,10 @@ class Tbdb:
         stack = []
         if t and t.tb_frame is f:
             t = t.tb_next
-        depth = self.get_depth()
-        for d in range(depth+1):
-            if f is None:
-                break
+        while f is not None:
             stack.append((f, f.f_lineno))
+            if f is self.botframe:
+                break
             f = f.f_back
         stack.reverse()
         i = max(0, len(stack) - 1)
@@ -386,7 +390,7 @@ class Tbdb:
         if locals is None:
             locals = globals
         self.reset()
-        sys.settrace(self.trace_dispatch)
+        sys.settrace(self.trace_start)
         if not isinstance(cmd, types.CodeType):
             cmd = cmd+'\n'
         try:
