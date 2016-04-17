@@ -66,6 +66,7 @@ public class Setup
         "ucnhash",
         "zipimport:org.python.modules.zipimport.zipimport",
         PosixModule.getOSName() + ":org.python.modules.posix.PosixModule",
-        "_tdb"
+        "_tdb",
+        "_odb:org.python.modules._odb._odb"
     };
 }

@@ -1,5 +1,7 @@
 package org.python.core;
 
+import org.python.modules._odb._odb;
+
 import java.util.Stack;
 
 /**
@@ -89,10 +91,12 @@ public class TdbTraceFunction extends PythonTraceFunction {
 //                        System.out.println("call at ic"+instructionCount);
                         lastCallInstructionCount = instructionCount;
                         callReturnMap.push(lastCallInstructionCount);
+                        _odb.callEvent(frame);
                     }
                     if (label.equals("return")) {
                         lastCallInstructionCount = callReturnMap.pop();
                         callDepth--;
+                        _odb.returnEvent(frame);
                     }
 
                     isTracing = true;
