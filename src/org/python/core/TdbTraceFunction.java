@@ -99,6 +99,10 @@ public class TdbTraceFunction extends PythonTraceFunction {
                         _odb.returnEvent(frame);
                     }
 
+                    if(label.equals("line")){
+                        _odb.lineEvent(frame);
+                    }
+
                     isTracing = true;
                     int linenumber = frame.f_lineno;
 //                    System.out.println("Tracing: " + frame.f_code.co_filename + " " + frame.f_lineno + " " + getInstructionCount() + " @ " + callDepth);

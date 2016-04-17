@@ -1,10 +1,9 @@
 import sys
 import cmd
-
 import os
 import types
 import _odb
-
+import linecache
 
 debug_enabled = 0
 
@@ -21,10 +20,13 @@ class Odb(cmd.Cmd):
         self.fncache = {}
         self.quit = 0
 
-    #region Cmd
+    # region Cmd
 
     def preloop(self):
-        self.prompt = "(Odb)<%s>"%0
+        self.prompt = "(Odb)<%s>" % 0
+
+    def postcmd(self, stop, line):
+        return self.quit
 
     def displayhook(self, obj):
         """Custom displayhook for the exec in default(), which prevents
@@ -54,11 +56,60 @@ class Odb(cmd.Cmd):
             t, v = sys.exc_info()[:2]
             if type(t) == type(''):
                 exc_type_name = t
-            else: exc_type_name = t.__name__
+            else:
+                exc_type_name = t.__name__
             print >> self.stdout, '***', exc_type_name + ':', v
 
     def do_where(self, arg):
         self.print_stack_trace()
+
+    def do_history(self, arg):
+        events = _odb.getEvents()
+        for e in events:
+            print e
+
+    def do_args(self, arg):
+        #arguments are the locals present during the 'call'
+        print _odb.getCurrentFrame().locals
+
+    def do_list(self, arg):
+        self.lastcmd = 'list'
+        curframe = _odb.getCurrentFrame()
+        last = None
+        if arg:
+            try:
+                x = eval(arg, {}, {})
+                if type(x) == type(()):
+                    first, last = x
+                    first = int(first)
+                    last = int(last)
+                    if last < first:
+                        # Assume it's a count
+                        last = first + last
+                else:
+                    first = max(1, int(x) - 5)
+            except:
+                print >> self.stdout, '*** Error in argument:', repr(arg)
+                return
+        first = max(1, curframe.lineno - 5)
+        if last is None:
+            last = first + 10
+        filename = curframe.filename
+        try:
+            for lineno in range(first, last + 1):
+                line = linecache.getline(filename, lineno) #,self.curframe.f_globals)
+                if not line:
+                    print >> self.stdout, '[EOF]'
+                    break
+                else:
+                    s = repr(lineno).rjust(3)
+                    if len(s) < 4: s = s + ' '
+                    s = s + ' '
+                    if lineno == curframe.lineno:
+                        s = s + '->'
+                    print >> self.stdout, s + '\t' + line,
+        except KeyboardInterrupt:
+            pass
 
     def do_next(self, arg):
         _odb.next()
@@ -67,14 +118,15 @@ class Odb(cmd.Cmd):
         _odb.previous()
 
     def do_quit(self, arg):
-        quit = 1
-        print "quitting"
+        self.quit = 1
 
-    #endregion
+    do_q = do_quit
+    do_w = do_where
+    do_l = do_list
+
+    # endregion
     def format_stack_entry(self, event, lprefix=': '):
         filename, lineno, name, = event.filename, event.lineno, event.name
-
-        import linecache, repr
         s = '%s(%r)' % (filename, lineno)
         if name:
             s = s + name
@@ -93,7 +145,7 @@ class Odb(cmd.Cmd):
         #     rv = frame.f_locals['__return__']
         #     s = s + '->'
         #     s = s + repr.repr(rv)
-        line = linecache.getline(filename, lineno) #, frame.globals)
+        line = linecache.getline(filename, lineno)  # , frame.globals)
         if line: s = s + lprefix + line.strip()
         return s
 
@@ -110,8 +162,8 @@ class Odb(cmd.Cmd):
         # if frame is self.curframe:
         #     print >>self.stdout, '>',
         # else:
-        print >>self.stdout, ' ',
-        print >>self.stdout, self.format_stack_entry(event, prompt_prefix)
+        print >> self.stdout, ' ',
+        print >> self.stdout, self.format_stack_entry(event, prompt_prefix)
 
     def canonic(self, filename):
         if filename == "<" + filename[1:-1] + ">":
@@ -159,9 +211,7 @@ class Odb(cmd.Cmd):
         finally:
             sys.settrace(None)
 
-
         self.cmdloop("Now running odb")
-
 
 
 def main():
