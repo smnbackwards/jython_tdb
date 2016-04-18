@@ -15,17 +15,45 @@ def debug(output):
 
 
 class Odb(cmd.Cmd):
-    def __init__(self, skip=None):
-        cmd.Cmd.__init__(self, completekey='tab', stdin=None, stdout=None)
+    def __init__(self, stdin=None, stdout=None,  skip=None):
+        cmd.Cmd.__init__(self, completekey='tab', stdin=stdin, stdout=stdout)
         self.fncache = {}
         self.quit = 0
+
+    def get_current_frame(self):
+        return _odb.getCurrentFrame()
+
+    def get_current_event(self):
+        return _odb.getCurrentEvent()
+
+    def get_current_timestamp(self):
+        return _odb.getCurrentTimestamp()
+
+    def get_current_frame_id(self):
+        return _odb.getCurrentFrameId()
 
     # region Cmd
 
     def preloop(self):
-        self.prompt = "(Odb)<%s>" % 0
+        frame = _odb.getCurrentFrame()
+        if frame :
+            event = _odb.getCurrentEvent()
+            self.print_stack_entry(frame.filename, event.lineno, frame.name)
+        self.prompt = "(Odb)<%s>" % _odb.getCurrentTimestamp();
 
     def postcmd(self, stop, line):
+
+        cmd, arg, line = self.parseline(line)
+        if not cmd:
+            return self.quit
+        # Determine if we must stop
+        try:
+            func = getattr(self, 'do_' + cmd)
+        except AttributeError:
+            func = self.default
+        # one of the resuming commands
+        if func.func_name in self.navigation_commands:
+            return 1
         return self.quit
 
     def displayhook(self, obj):
@@ -111,11 +139,31 @@ class Odb(cmd.Cmd):
         except KeyboardInterrupt:
             pass
 
+    def do_up(self, arg):
+        _odb.moveUpFrames()
+
+    def do_down(self, arg):
+        _odb.moveDownFrames()
+
     def do_next(self, arg):
-        _odb.next()
+        _odb.moveNextFrames()
 
     def do_prev(self, arg):
-        _odb.previous()
+        _odb.movePrevFrames()
+
+    def do_step(self, arg):
+        _odb.step()
+
+    def do_rstep(self,arg):
+        _odb.rstep()
+
+    def do_jump(self, arg):
+        try:
+            arg = int(arg)
+        except ValueError:
+            print >>self.stdout, "*** The 'jump' command requires a line number."
+        else:
+            _odb.jump(arg)
 
     def do_quit(self, arg):
         self.quit = 1
@@ -124,9 +172,9 @@ class Odb(cmd.Cmd):
     do_w = do_where
     do_l = do_list
 
+    navigation_commands = ['do_next', 'do_prev', 'do_up', 'do_down', 'do_jump', 'do_step', 'do_rstep']
     # endregion
-    def format_stack_entry(self, event, lprefix=': '):
-        filename, lineno, name, = event.filename, event.lineno, event.name
+    def format_stack_entry(self, filename, lineno, name, lprefix=': '):
         s = '%s(%r)' % (filename, lineno)
         if name:
             s = s + name
@@ -151,19 +199,32 @@ class Odb(cmd.Cmd):
 
     def print_stack_trace(self):
         try:
-            event = _odb.getCurrentFrame()
-            while event:
-                self.print_stack_entry(event)
-                event = event.parent
+            currentframe = _odb.getCurrentFrame()
+            event = _odb.getCurrentEvent()
+            frames = []
+            frame = currentframe.parent if currentframe else None
+
+            while frame:
+                frames.append(frame)
+                frame = frame.parent
+
+            for f in reversed(frames):
+                # For the other frames the call site is correct
+                self.print_stack_entry(f.filename, f.lineno, f.name)
+
+            # Use the most accureate line number for the actual line
+            if currentframe:
+                self.print_stack_entry(currentframe.filename, event.lineno, currentframe.name)
+
         except KeyboardInterrupt:
             pass
 
-    def print_stack_entry(self, event, prompt_prefix='\n  ->'):
+    def print_stack_entry(self, filename, lineno, name, prompt_prefix='\n  ->'):
         # if frame is self.curframe:
         #     print >>self.stdout, '>',
         # else:
         print >> self.stdout, ' ',
-        print >> self.stdout, self.format_stack_entry(event, prompt_prefix)
+        print >> self.stdout, self.format_stack_entry(filename, lineno, name, prompt_prefix)
 
     def canonic(self, filename):
         if filename == "<" + filename[1:-1] + ">":
@@ -177,6 +238,10 @@ class Odb(cmd.Cmd):
 
     def trace_dispatch(self, frame, event, arg):
         return self.trace_dispatch
+
+    def control_loop(self):
+        while not self.quit:
+            self.cmdloop()
 
     def run(self, filename):
         # The script has to run in __main__ namespace (or imports from
@@ -203,6 +268,7 @@ class Odb(cmd.Cmd):
         globals = __main__.__dict__
         locals = globals
 
+        _odb.reset()
         sys.settrace(self.trace_dispatch)
         if not isinstance(cmd, types.CodeType):
             cmd = cmd + '\n'
@@ -211,8 +277,8 @@ class Odb(cmd.Cmd):
         finally:
             sys.settrace(None)
 
-        self.cmdloop("Now running odb")
-
+        print "Program has finished, now entering ODB mode"
+        self.control_loop()
 
 def main():
     if not sys.argv[1:] or sys.argv[1] in ("--help", "-h"):

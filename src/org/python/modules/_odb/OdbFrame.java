@@ -17,7 +17,7 @@ public class OdbFrame extends PyObject {
     @ExposedGet(name = "name")
     public String methodName;
     @ExposedGet
-    public long timestamp;
+    public int timestamp;
     @ExposedGet
     public String filename;
     @ExposedGet
@@ -25,7 +25,7 @@ public class OdbFrame extends PyObject {
     public Map<Object, PyObject> locals;
 
 
-    public OdbFrame(long timestamp, String filename, int lineno, String methodName, OdbFrame parent, Map<Object,PyObject> locals) {
+    public OdbFrame(int timestamp, String filename, int lineno, String methodName, OdbFrame parent, Map<Object,PyObject> locals) {
         super(TYPE);
         this.timestamp = timestamp;
         this.filename = filename;
