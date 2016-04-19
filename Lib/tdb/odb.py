@@ -96,6 +96,11 @@ class Odb(cmd.Cmd):
         for e in events:
             print e
 
+    def do_chistory(self, arg):
+        frames = _odb.getFrames()
+        for f in frames:
+            self.print_stack_entry(f.filename, f.lineno, f.name)
+
     def do_args(self, arg):
         #arguments are the locals present during the 'call'
         print _odb.getCurrentFrame().locals
@@ -278,6 +283,7 @@ class Odb(cmd.Cmd):
             sys.settrace(None)
 
         print "Program has finished, now entering ODB mode"
+        _odb.setup()
         self.control_loop()
 
 def main():
