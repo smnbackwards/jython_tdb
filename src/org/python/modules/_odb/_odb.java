@@ -8,6 +8,8 @@ import java.util.*;
  * Created by nms12 on 4/15/2016.
  */
 public class _odb {
+    private static int LEVEL = Py.MESSAGE;
+//    private static int LEVEL = Py.COMMENT;
 
     protected static int timestamp = 0;
     protected static Stack<OdbFrame> frames = new Stack<>();
@@ -18,20 +20,29 @@ public class _odb {
     protected static int currentTimestamp = -1;
 
 
-    public static void callEvent(PyFrame frame) {
-        PyStringMap locals = (PyStringMap) frame.getLocals();
-        Map<Object, PyObject> localMap = locals.getMap();
-
+    public static void initializeParent(PyFrame frame){
         if(parent == null){
-            PyFrame parentFrame = frame.f_back;
+            assert timestamp == 0;
+            assert frames.isEmpty();
+            assert eventHistory.isEmpty();
+
+            PyFrame parentFrame = frame;
             Map<Object, PyObject> parentLocalMap = ((PyStringMap)frame.getLocals()).getMap();
-            parent = new OdbFrame(-1, //Flag to say this is the enclosing frame
+            parent = new OdbFrame(0, //Flag to say this is the enclosing frame
                     parentFrame.f_code.co_filename,
                     parentFrame.f_back.f_lineno,
                     parentFrame.f_code.co_name,
                     null,
-                    localMap);
+                    parentLocalMap);
+            frames.push(parent);
         }
+    }
+
+    public static void callEvent(PyFrame frame) {
+        PyStringMap locals = (PyStringMap) frame.getLocals();
+        Map<Object, PyObject> localMap = locals.getMap();
+
+        initializeParent(frame.f_back);
 
         parent = new OdbFrame(timestamp,
                 frame.f_code.co_filename,
@@ -44,13 +55,13 @@ public class _odb {
 
         eventHistory.add(new OdbEvent(timestamp, frame.f_lineno, parent, OdbEvent.Type.CALL));
 
-        Py.writeMessage("TTD", frames.peek().toString());
+        Py.maybeWrite("TTD", frames.peek().toString(),LEVEL);
         timestamp++;
     }
 
     public static void returnEvent(PyFrame frame) {
         if (!frames.empty()) {
-            Py.writeMessage("TTD", "Return from event: " + parent.toString());
+            Py.maybeWrite("TTD", "Return from event: " + parent.toString(), LEVEL);
             eventHistory.add(new OdbEvent(timestamp, frame.f_lineno, parent, OdbEvent.Type.RETURN));
             parent = parent.parent;
             timestamp++;
@@ -58,6 +69,7 @@ public class _odb {
     }
 
     public static void lineEvent(PyFrame frame) {
+        initializeParent(frame);
         eventHistory.add(new OdbEvent(timestamp, frame.f_lineno, parent, OdbEvent.Type.LINE));
         timestamp++;
     }
@@ -77,8 +89,8 @@ public class _odb {
     }
 
     public static void setup(){
-        currentTimestamp = timestamp-1;
-        currentFrame = frames.indexOf(getCurrentEvent().frame);
+        currentTimestamp = 0;
+        currentFrame = 0;
     }
 
     public static List<OdbEvent> getEvents() {
@@ -106,15 +118,58 @@ public class _odb {
         return currentFrame;
     }
 
-    public static void step(){
-        jump(currentTimestamp+1);
+    public static void do_step(){
+        do_jump(currentTimestamp+1);
     }
 
-    public static void rstep(){
-        jump(currentTimestamp-1);
+    public static void do_rstep(){
+        do_jump(currentTimestamp-1);
     }
 
-    public static void jump(int n){
+    public static void do_return(){
+        //step through frames until you reach a frame equal to the current parent frame
+        OdbFrame frame = null;
+        OdbFrame parent = getCurrentFrame().parent;
+
+        for (int i = getCurrentFrameId()+1; i <frames.size(); i++) {
+            frame = frames.get(i);
+            if(frame.equals(parent)){
+                break;
+            }
+            frame = null;
+        }
+
+        if(frame != null){
+            do_jump(frame.timestamp);
+        }
+    }
+
+    public static void do_next(){
+        OdbFrame frame = null;
+        OdbFrame parent = getCurrentFrame().parent;
+
+        for (int i = getCurrentFrameId()+1; i <frames.size(); i++) {
+            frame = frames.get(i);
+            if(frame.equals(parent)){
+                break;
+            }
+            frame = null;
+        }
+
+        if(frame != null){
+            do_jump(frame.timestamp);
+        }
+    }
+
+    public static void do_rnext(){
+
+    }
+
+    public static void do_rreturn(){
+        do_jump(0);
+    }
+
+    public static void do_jump(int n){
         if(n >= 0 && n < eventHistory.size()){
             currentTimestamp = n;
             currentFrame = frames.indexOf(getCurrentEvent().frame);
@@ -126,7 +181,7 @@ public class _odb {
         if(frame == null){
             return;
         }
-        if(frame.parent != null && frame.parent.timestamp > 0){
+        if(frame.parent != null){
             //Use parent to climb up call stack
             currentFrame = frames.indexOf(frame.parent);
             currentTimestamp = frames.get(currentFrame).timestamp;

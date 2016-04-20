@@ -32,6 +32,9 @@ class Odb(cmd.Cmd):
     def get_current_frame_id(self):
         return _odb.getCurrentFrameId()
 
+    def get_current_lineno(self):
+        return self.get_current_event().lineno
+
     # region Cmd
 
     def preloop(self):
@@ -124,7 +127,7 @@ class Odb(cmd.Cmd):
             except:
                 print >> self.stdout, '*** Error in argument:', repr(arg)
                 return
-        first = max(1, curframe.lineno - 5)
+        first = max(1, self.get_current_lineno() - 5)
         if last is None:
             last = first + 10
         filename = curframe.filename
@@ -138,7 +141,7 @@ class Odb(cmd.Cmd):
                     s = repr(lineno).rjust(3)
                     if len(s) < 4: s = s + ' '
                     s = s + ' '
-                    if lineno == curframe.lineno:
+                    if lineno == self.get_current_lineno():
                         s = s + '->'
                     print >> self.stdout, s + '\t' + line,
         except KeyboardInterrupt:
@@ -150,17 +153,29 @@ class Odb(cmd.Cmd):
     def do_down(self, arg):
         _odb.moveDownFrames()
 
-    def do_next(self, arg):
+    def do_nextf(self, arg):
         _odb.moveNextFrames()
 
-    def do_prev(self, arg):
+    def do_prevf(self, arg):
         _odb.movePrevFrames()
 
     def do_step(self, arg):
-        _odb.step()
+        _odb.do_step()
 
     def do_rstep(self,arg):
-        _odb.rstep()
+        _odb.do_rstep()
+
+    def do_next(self, arg):
+        _odb.do_next()
+
+    def do_rnext(self, arg):
+        _odb.do_rnext()
+
+    def do_return(self, arg):
+        _odb.do_return()
+
+    def do_rreturn(self, arg):
+        _odb.do_rreturn()
 
     def do_jump(self, arg):
         try:
@@ -168,7 +183,7 @@ class Odb(cmd.Cmd):
         except ValueError:
             print >>self.stdout, "*** The 'jump' command requires a line number."
         else:
-            _odb.jump(arg)
+            _odb.do_jump(arg)
 
     def do_quit(self, arg):
         self.quit = 1
@@ -176,8 +191,17 @@ class Odb(cmd.Cmd):
     do_q = do_quit
     do_w = do_where
     do_l = do_list
+    do_u = do_up
+    do_d = do_down
+    do_nf = do_nextf
+    do_pf = do_prevf
+    do_s = do_step
+    do_rs = do_rstep
+    do_n = do_next
+    do_rn = do_rnext
 
-    navigation_commands = ['do_next', 'do_prev', 'do_up', 'do_down', 'do_jump', 'do_step', 'do_rstep']
+    navigation_commands = ['do_next', 'do_prev', 'do_up', 'do_down', 'do_jump', 'do_step', 'do_rstep'
+                           'do_nextf', 'do_prevf']
     # endregion
     def format_stack_entry(self, filename, lineno, name, lprefix=': '):
         s = '%s(%r)' % (filename, lineno)

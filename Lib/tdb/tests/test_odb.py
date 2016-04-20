@@ -24,7 +24,7 @@ class TestGeneratorInput(object):
 
     def __enter__(self):
         self.real_stdin = sys.stdin
-        # self.real_stdout = sys.stdout
+        self.real_stdout = sys.stdout
         self.generator_input = _GeneratorInput()
         sys.stdin = self.generator_input
         # sys.stdout = NullDevice()
@@ -32,25 +32,16 @@ class TestGeneratorInput(object):
 
     def __exit__(self, *exc):
         sys.stdin = self.real_stdin
-        # sys.stdout = self.real_stdout
+        sys.stdout = self.real_stdout
 
 class OdbModelTestCase(unittest.TestCase):
     fib = 'examples/fib.py'
 
     def _test_fib(self, commands_and_asserts_generator):
         with TestGeneratorInput() as test_input:
-            debugger = odb.Odb()
+            debugger = odb.Odb(stdin=sys.stdin, stdout=sys.stdout)
             test_input.initialize_generator(commands_and_asserts_generator(debugger))
             debugger.run(self.fib)
-
-    def test_jump(self):
-        def control_function(debugger):
-            self.assertEqual(22, debugger.get_current_timestamp())
-            yield 'jump 0'
-            self.assertEqual(0, debugger.get_current_timestamp())
-            yield 'quit'
-
-        self._test_fib(control_function)
 
     #region model based tests
     class OdbExecutionModel():
@@ -62,29 +53,29 @@ class OdbModelTestCase(unittest.TestCase):
             self.prev_frame_timestamp = prev_frame_timestamp
 
     model = [
-        OdbExecutionModel(-1, 0, 0,  2,  0),
-        OdbExecutionModel(-1, 1, 1,  2,  1),
-        OdbExecutionModel(0,  2, 5,  5,  2),
-        OdbExecutionModel(0,  3, 5,  5,  3),
-        OdbExecutionModel(0,  4, 5,  5,  4),
-        OdbExecutionModel(1,  2, 8,  8,  2),
-        OdbExecutionModel(1,  2, 8,  8,  2),
-        OdbExecutionModel(1,  2, 8,  8,  2),
-        OdbExecutionModel(2,  5, 8,  12, 5),
-        OdbExecutionModel(2,  5, 9,  12, 5),
-        OdbExecutionModel(2,  5, 10, 12, 5),
-        OdbExecutionModel(2,  5, 11, 12, 5),  # 11
-        OdbExecutionModel(3,  5, 12, 17, 8),
-        OdbExecutionModel(3,  5, 13, 17, 8),
-        OdbExecutionModel(3,  5, 14, 17, 8),
-        OdbExecutionModel(3,  5, 15, 17, 8),  # 15
-        OdbExecutionModel(1,  2, 16, 8,  2),  # 16
-        OdbExecutionModel(4,  2, 17, 17, 12),
-        OdbExecutionModel(4,  2, 18, 18, 12),
-        OdbExecutionModel(4,  2, 19, 19, 12),
-        OdbExecutionModel(4,  2, 20, 20, 12),  # 20
-        OdbExecutionModel(0,  21,21, 5,  21),  # 21
-        OdbExecutionModel(-1, 22,22, 2,  22),
+        OdbExecutionModel(0, 0, 2,  2,  0),
+        OdbExecutionModel(0, 1, 2,  2,  1), #no prev or up frame, so no change
+        OdbExecutionModel(1, 0, 5,  5,  0),
+        OdbExecutionModel(1, 0, 5,  5,  0),
+        OdbExecutionModel(1, 0, 5,  5,  0),
+        OdbExecutionModel(2, 2, 8,  8,  2),
+        OdbExecutionModel(2, 2, 8,  8,  2),
+        OdbExecutionModel(2, 2, 8,  8,  2),
+        OdbExecutionModel(3, 5, 8,  12, 5),
+        OdbExecutionModel(3, 5, 9,  12, 5),
+        OdbExecutionModel(3, 5, 10, 12, 5),
+        OdbExecutionModel(3, 5, 11, 12, 5),  # 11
+        OdbExecutionModel(4, 5, 12, 17, 8),
+        OdbExecutionModel(4, 5, 13, 17, 8),
+        OdbExecutionModel(4, 5, 14, 17, 8),
+        OdbExecutionModel(4, 5, 15, 17, 8),  # 15
+        OdbExecutionModel(2, 2, 16, 8,  2),  # 16
+        OdbExecutionModel(5, 2, 17, 17, 12),
+        OdbExecutionModel(5, 2, 18, 18, 12),
+        OdbExecutionModel(5, 2, 19, 19, 12),
+        OdbExecutionModel(5, 2, 20, 20, 12),  # 20
+        OdbExecutionModel(1, 0, 21, 5,  0),  # 21
+        OdbExecutionModel(0, 22,22, 2,  22),
     ]
 
     def setUp(self):
@@ -168,7 +159,7 @@ def create_test_next(i):
             yield 'jump ' + str(i);
             self.jump(i)
             self.compare_with_model(debugger)
-            yield 'next';
+            yield 'nextf';
             self.next_frame()
             self.compare_with_model(debugger)
             yield 'quit'
@@ -183,7 +174,7 @@ def create_test_prev(i):
             yield 'jump ' + str(i);
             self.jump(i)
             self.compare_with_model(debugger)
-            yield 'prev';
+            yield 'prevf';
             self.prev_frame()
             self.compare_with_model(debugger)
             yield 'quit'
