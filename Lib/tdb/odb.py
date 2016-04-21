@@ -200,8 +200,8 @@ class Odb(cmd.Cmd):
     do_n = do_next
     do_rn = do_rnext
 
-    navigation_commands = ['do_next', 'do_prev', 'do_up', 'do_down', 'do_jump', 'do_step', 'do_rstep'
-                           'do_nextf', 'do_prevf']
+    navigation_commands = ['do_next', 'do_prev', 'do_up', 'do_down', 'do_jump', 'do_step', 'do_rstep',
+                           'do_nextf', 'do_prevf', 'do_return', 'do_rreturn']
     # endregion
     def format_stack_entry(self, filename, lineno, name, lprefix=': '):
         s = '%s(%r)' % (filename, lineno)

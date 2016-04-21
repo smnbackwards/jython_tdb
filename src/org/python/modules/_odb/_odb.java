@@ -101,7 +101,7 @@ public class _odb {
         return frames;
     }
 
-    public static long getCurrentTimestamp() {
+    public static int getCurrentTimestamp() {
         return currentTimestamp;
     }
 
@@ -127,47 +127,83 @@ public class _odb {
     }
 
     public static void do_return(){
-        //step through frames until you reach a frame equal to the current parent frame
-        OdbFrame frame = null;
-        OdbFrame parent = getCurrentFrame().parent;
+        OdbEvent event = null;
+        OdbFrame frame = getCurrentFrame();
 
-        for (int i = getCurrentFrameId()+1; i <frames.size(); i++) {
-            frame = frames.get(i);
-            if(frame.equals(parent)){
-                break;
-            }
-            frame = null;
+        //if I am the return event I am looking for then just step 1
+        if( getCurrentEvent().eventType == OdbEvent.Type.RETURN
+                && getCurrentEvent().frame.equals(frame) ){
+            do_step();
+            return;
         }
 
-        if(frame != null){
+        for (int i = getCurrentTimestamp()+1; i <eventHistory.size(); i++) {
+            event = eventHistory.get(i);
+            if(event.eventType == OdbEvent.Type.RETURN && event.frame.equals(frame)){
+                break;
+            }
+            event = null;
+        }
+
+        if(event != null){
+            do_jump(event.timestamp);
+        } else {
+            do_jump(eventHistory.size()-1);
+        }
+    }
+
+    public static void do_rreturn(){
+        OdbEvent event = null;
+        OdbFrame frame = getCurrentFrame();
+        if(frame.timestamp == getCurrentTimestamp()){
+            do_rstep();
+        } else {
             do_jump(frame.timestamp);
         }
     }
 
     public static void do_next(){
-        OdbFrame frame = null;
-        OdbFrame parent = getCurrentFrame().parent;
+        OdbEvent event = null;
+        OdbFrame frame = getCurrentFrame();
 
-        for (int i = getCurrentFrameId()+1; i <frames.size(); i++) {
-            frame = frames.get(i);
-            if(frame.equals(parent)){
-                break;
-            }
-            frame = null;
+        if(getCurrentEvent().eventType == OdbEvent.Type.RETURN){
+            frame = frame.parent;
         }
 
-        if(frame != null){
-            do_jump(frame.timestamp);
+        for (int i = getCurrentTimestamp()+1; i <eventHistory.size(); i++) {
+            event = eventHistory.get(i);
+            if(event.frame.equals(frame)){
+                break;
+            }
+            event = null;
+        }
+
+        if(event != null){
+            do_jump(event.timestamp);
         }
     }
 
     public static void do_rnext(){
+        OdbEvent event = null;
+        OdbFrame frame = getCurrentFrame();
 
+        if(getCurrentEvent().eventType == OdbEvent.Type.CALL){
+            frame = frame.parent;
+        }
+
+        for (int i = getCurrentTimestamp()-1; i >= 0; i--) {
+            event = eventHistory.get(i);
+            if(event.frame.equals(frame)){
+                break;
+            }
+            event = null;
+        }
+
+        if(event != null){
+            do_jump(event.timestamp);
+        }
     }
 
-    public static void do_rreturn(){
-        do_jump(0);
-    }
 
     public static void do_jump(int n){
         if(n >= 0 && n < eventHistory.size()){

@@ -1,5 +1,6 @@
 import sys
 import unittest
+import fibexecutionmodel
 from tdb import odb
 from test import test_support
 
@@ -34,7 +35,7 @@ class TestGeneratorInput(object):
         sys.stdin = self.real_stdin
         sys.stdout = self.real_stdout
 
-class OdbModelTestCase(unittest.TestCase):
+class OdbFibFrameModelTestCase(unittest.TestCase):
     fib = 'examples/fib.py'
 
     def _test_fib(self, commands_and_asserts_generator):
@@ -79,7 +80,7 @@ class OdbModelTestCase(unittest.TestCase):
     ]
 
     def setUp(self):
-        super(OdbModelTestCase, self).setUp()
+        super(OdbFibFrameModelTestCase, self).setUp()
         self.timestamp = len(self.model) - 1
 
     def jump(self, n):
@@ -187,10 +188,10 @@ def create_test_prev(i):
 def generate_test(i, method, test_name):
     test_method = method(i)
     test_method.__name__ = test_name
-    setattr(OdbModelTestCase, test_method.__name__, test_method)
+    setattr(OdbFibFrameModelTestCase, test_method.__name__, test_method)
 
 
-for i in range(len(OdbModelTestCase.model)):
+for i in range(len(OdbFibFrameModelTestCase.model)):
     generate_test(i, create_test_jump, 'test_jump_%s'%i)
     generate_test(i, create_test_up, 'test_up_%s' % i)
     generate_test(i, create_test_down, 'test_down_%s' % i)
@@ -198,9 +199,20 @@ for i in range(len(OdbModelTestCase.model)):
     generate_test(i, create_test_prev, 'test_prev_%s' % i)
 #endregion
 
+class OdbFibModelTestCase(unittest.TestCase):
+    def _test_fib(self, commands_and_asserts_generator):
+        with TestGeneratorInput() as test_input:
+            debugger = odb.Odb()
+            model = fibexecutionmodel.FibExecutionModel(debugger, self)
+            test_input.initialize_generator(commands_and_asserts_generator(model))
+            debugger.run(model.filename)
+
+
+fibexecutionmodel.generate_tests(OdbFibModelTestCase)
+
 def test_main():
     # test_support.verbose = 1
-    test_support.run_unittest(OdbModelTestCase)
+    test_support.run_unittest(OdbFibFrameModelTestCase, OdbFibModelTestCase)
 
 
 if __name__ == '__main__':
