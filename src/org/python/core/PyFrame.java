@@ -8,6 +8,7 @@ import org.python.expose.ExposedDelete;
 import org.python.expose.ExposedGet;
 import org.python.expose.ExposedSet;
 import org.python.expose.ExposedType;
+import org.python.modules._odb._odb;
 
 /**
  * A Python frame object.
@@ -281,6 +282,9 @@ public class PyFrame extends PyObject implements Traverseproc {
 
     public void setlocal(int index, PyObject value) {
         if (f_fastlocals != null) {
+            if(_odb.enabled){
+                _odb.localEvent(this.f_code.co_varnames[index], value);
+            }
             f_fastlocals[index] = value;
         } else {
             setlocal(f_code.co_varnames[index], value);
@@ -289,6 +293,9 @@ public class PyFrame extends PyObject implements Traverseproc {
 
     public void setlocal(String index, PyObject value) {
         if (f_locals != null) {
+            if(_odb.enabled){
+                _odb.localEvent(index, value);
+            }
             f_locals.__setitem__(index, value);
         } else {
             throw Py.SystemError(String.format("no locals found when storing '%s'", value));

@@ -106,7 +106,10 @@ class Odb(cmd.Cmd):
 
     def do_args(self, arg):
         #arguments are the locals present during the 'call'
-        print _odb.getCurrentFrame().locals
+        print _odb.getFrameArguments()
+
+    def do_locals(self, arg):
+        print _odb.getCurrentLocals()
 
     def do_list(self, arg):
         self.lastcmd = 'list'
@@ -226,6 +229,24 @@ class Odb(cmd.Cmd):
         if line: s = s + lprefix + line.strip()
         return s
 
+    def _getval(self, arg):
+        try:
+            return eval(arg, _odb.getCurrentLocals())
+        except:
+            t, v = sys.exc_info()[:2]
+            if isinstance(t, str):
+                exc_type_name = t
+            else: exc_type_name = t.__name__
+            print >>self.stdout, '***', exc_type_name + ':', repr(v)
+            raise
+
+    def do_p(self, arg):
+        try:
+            print >>self.stdout, repr(self._getval(arg))
+        except:
+            pass
+
+
     def print_stack_trace(self):
         try:
             currentframe = _odb.getCurrentFrame()
@@ -254,6 +275,7 @@ class Odb(cmd.Cmd):
         # else:
         print >> self.stdout, ' ',
         print >> self.stdout, self.format_stack_entry(filename, lineno, name, prompt_prefix)
+
 
     def canonic(self, filename):
         if filename == "<" + filename[1:-1] + ">":

@@ -61,10 +61,10 @@ public class TdbTraceFunction extends PythonTraceFunction {
                 PyObject ret = null;
                 try {
                     ts.tracing = true;
-//                    if (frame.f_code.co_filename.endsWith("db.py")) {
-//                        System.out.println("Skipping because ends with db.py");
-//                        return this;
-//                    }
+                    if (frame.f_code.co_filename.startsWith(Py.getSystemState().path.get(1).toString())) {
+                        _odb.enabled = false;
+                        return this;
+                    }
 
 //                    System.out.println("TraceFunction "+label);
 
@@ -79,6 +79,8 @@ public class TdbTraceFunction extends PythonTraceFunction {
                             return this;
                         }
                     }
+
+                    _odb.enabled = true;
 
                     if (callDepth == 0 && label.equals("return")) {
 //                        System.out.println("return 0");

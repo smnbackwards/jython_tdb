@@ -8,8 +8,8 @@ import java.util.*;
  * Created by nms12 on 4/15/2016.
  */
 public class _odb {
-    private static int LEVEL = Py.MESSAGE;
-//    private static int LEVEL = Py.COMMENT;
+//    private static int LEVEL = Py.MESSAGE;
+    private static int LEVEL = Py.COMMENT;
 
     protected static int timestamp = 0;
     protected static Stack<OdbFrame> frames = new Stack<>();
@@ -18,6 +18,7 @@ public class _odb {
 
     protected static int currentFrame = -1;
     protected static int currentTimestamp = -1;
+    public static boolean enabled = false;
 
 
     public static void initializeParent(PyFrame frame){
@@ -27,7 +28,13 @@ public class _odb {
             assert eventHistory.isEmpty();
 
             PyFrame parentFrame = frame;
-            Map<Object, PyObject> parentLocalMap = ((PyStringMap)frame.getLocals()).getMap();
+            HistoryMap<Object, PyObject> parentLocalMap = new HistoryMap<>();
+            Map<Object, PyObject> tempMap = ((PyStringMap)frame.getLocals()).getMap();
+            for (Object key :tempMap.keySet() ) {
+                if(!key.equals("__builtins__")){
+                    parentLocalMap.put(-1, key, tempMap.get(key));
+                }
+            }
             parent = new OdbFrame(0, //Flag to say this is the enclosing frame
                     parentFrame.f_code.co_filename,
                     parentFrame.f_back.f_lineno,
@@ -35,12 +42,14 @@ public class _odb {
                     null,
                     parentLocalMap);
             frames.push(parent);
+            currentFrame++;
         }
     }
 
     public static void callEvent(PyFrame frame) {
-        PyStringMap locals = (PyStringMap) frame.getLocals();
-        Map<Object, PyObject> localMap = locals.getMap();
+        HistoryMap<Object, PyObject> localMap = new HistoryMap<>();
+        Map<Object, PyObject> tempMap = ((PyStringMap)frame.getLocals()).getMap();
+        tempMap.keySet().stream().forEach(o -> localMap.put(currentTimestamp, o, tempMap.get(o)));
 
         initializeParent(frame.f_back);
 
@@ -57,14 +66,18 @@ public class _odb {
 
         Py.maybeWrite("TTD", frames.peek().toString(),LEVEL);
         timestamp++;
+        currentTimestamp++;
+        currentFrame++;
     }
 
     public static void returnEvent(PyFrame frame) {
         if (!frames.empty()) {
             Py.maybeWrite("TTD", "Return from event: " + parent.toString(), LEVEL);
             eventHistory.add(new OdbEvent(timestamp, frame.f_lineno, parent, OdbEvent.Type.RETURN));
+            currentFrame = frames.search(parent);
             parent = parent.parent;
             timestamp++;
+            currentTimestamp++;
         }
     }
 
@@ -72,6 +85,18 @@ public class _odb {
         initializeParent(frame);
         eventHistory.add(new OdbEvent(timestamp, frame.f_lineno, parent, OdbEvent.Type.LINE));
         timestamp++;
+        currentTimestamp++;
+    }
+
+    public static void localEvent(String index, PyObject value){
+
+        OdbFrame frame = getCurrentFrame();
+        if(frame != null) {
+            Py.maybeWrite("TTD", String.format("Set %s to %s in %s", index, value, frame), LEVEL);
+            frame.locals.put(currentTimestamp, index, value);
+        } else {
+            Py.maybeWrite("TTD", "localEvent, NO FRAME", LEVEL);
+        }
     }
 
     public static void reset(){
@@ -91,6 +116,7 @@ public class _odb {
     public static void setup(){
         currentTimestamp = 0;
         currentFrame = 0;
+        enabled = false;
     }
 
     public static List<OdbEvent> getEvents() {
@@ -116,6 +142,19 @@ public class _odb {
 
     public static int getCurrentFrameId(){
         return currentFrame;
+    }
+
+    public static PyStringMap getCurrentLocals(){
+        return getCurrentFrame().getLocals(currentTimestamp);
+    }
+
+    public static PyObject lookupLocal(String key){
+        return getCurrentFrame().locals.get(currentTimestamp, key);
+    }
+
+    public static PyStringMap getFrameArguments(){
+        OdbFrame frame = getCurrentFrame();
+        return frame.getLocals(frame.timestamp);
     }
 
     public static void do_step(){

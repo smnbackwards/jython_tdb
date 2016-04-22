@@ -93,7 +93,7 @@ oracle.jar=C:/workspace/HEAD/for_development/bisdevsrv28/jboss/server/infra/lib/
         <!-- Usually zero, only used for alpha, beta and candidate versions
              where it must be greater than zero. -->
         <property name="jython.release_serial" value="0"/>
-        <property name="jython.java.version" value="1.7"/>
+        <property name="jython.java.version" value="1.8"/>
 
         <condition property="do.snapshot.build">
             <isset property="snapshot.revision" />
