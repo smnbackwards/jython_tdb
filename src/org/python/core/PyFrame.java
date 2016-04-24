@@ -303,6 +303,9 @@ public class PyFrame extends PyObject implements Traverseproc {
     }
 
     public void setglobal(String index, PyObject value) {
+        if(_odb.enabled){
+            _odb.globalEvent(index, value);
+        }
         f_globals.__setitem__(index, value);
     }
 

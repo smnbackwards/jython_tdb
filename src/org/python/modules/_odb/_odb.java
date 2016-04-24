@@ -28,7 +28,7 @@ public class _odb {
             assert eventHistory.isEmpty();
 
             PyFrame parentFrame = frame;
-            HistoryMap<Object, PyObject> parentLocalMap = new HistoryMap<>();
+            HistoryMap<Object> parentLocalMap = new HistoryMap<>();
             Map<Object, PyObject> tempMap = ((PyStringMap)frame.getLocals()).getMap();
             for (Object key :tempMap.keySet() ) {
                 if(!key.equals("__builtins__")){
@@ -47,7 +47,7 @@ public class _odb {
     }
 
     public static void callEvent(PyFrame frame) {
-        HistoryMap<Object, PyObject> localMap = new HistoryMap<>();
+        HistoryMap<Object> localMap = new HistoryMap<>();
         Map<Object, PyObject> tempMap = ((PyStringMap)frame.getLocals()).getMap();
         tempMap.keySet().stream().forEach(o -> localMap.put(currentTimestamp, o, tempMap.get(o)));
 
@@ -97,6 +97,11 @@ public class _odb {
         } else {
             Py.maybeWrite("TTD", "localEvent, NO FRAME", LEVEL);
         }
+    }
+
+    public static void globalEvent(String name, PyObject value) {
+        Py.maybeWrite("TTD", String.format("Set global %s to %s", name, value), LEVEL);
+        frames.get(0).locals.put(currentTimestamp, name, value);
     }
 
     public static void reset(){
@@ -150,6 +155,10 @@ public class _odb {
 
     public static PyObject lookupLocal(String key){
         return getCurrentFrame().locals.get(currentTimestamp, key);
+    }
+
+    public static List<LocalValue> getLocalHistory(String key) {
+        return getCurrentFrame().locals.getBefore(currentTimestamp, key);
     }
 
     public static PyStringMap getFrameArguments(){
@@ -298,6 +307,5 @@ public class _odb {
             currentTimestamp = frames.get(currentFrame).timestamp;
         }
     }
-
 
 }

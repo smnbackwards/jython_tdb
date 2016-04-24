@@ -19,6 +19,10 @@ class Odb(cmd.Cmd):
         cmd.Cmd.__init__(self, completekey='tab', stdin=stdin, stdout=stdout)
         self.fncache = {}
         self.quit = 0
+        self.lineno = None
+
+    def reset(self):
+        self.lineno = None
 
     def get_current_frame(self):
         return _odb.getCurrentFrame()
@@ -104,6 +108,16 @@ class Odb(cmd.Cmd):
         for f in frames:
             self.print_stack_entry(f.filename, f.lineno, f.name)
 
+    def do_vhistory(self, arg):
+        '''
+        Displays a list of values which the variable had in the past
+        <0> 5 means at timestamp <0> the value was 5
+        '''
+        values = _odb.getLocalHistory(arg)
+        if values:
+            for v in values:
+                print '<%s> %s' %(v.timestamp, v.value)
+
     def do_args(self, arg):
         #arguments are the locals present during the 'call'
         print _odb.getFrameArguments()
@@ -130,7 +144,10 @@ class Odb(cmd.Cmd):
             except:
                 print >> self.stdout, '*** Error in argument:', repr(arg)
                 return
-        first = max(1, self.get_current_lineno() - 5)
+        elif self.lineno is None:
+            first = max(1, self.get_current_lineno() - 5)
+        else:
+            first = self.lineno + 1
         if last is None:
             last = first + 10
         filename = curframe.filename
@@ -147,6 +164,7 @@ class Odb(cmd.Cmd):
                     if lineno == self.get_current_lineno():
                         s = s + '->'
                     print >> self.stdout, s + '\t' + line,
+                    self.lineno = lineno
         except KeyboardInterrupt:
             pass
 
@@ -293,6 +311,7 @@ class Odb(cmd.Cmd):
     def control_loop(self):
         while not self.quit:
             self.cmdloop()
+            self.reset()
 
     def run(self, filename):
         # The script has to run in __main__ namespace (or imports from
