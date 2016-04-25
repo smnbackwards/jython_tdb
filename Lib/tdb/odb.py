@@ -5,6 +5,8 @@ import types
 import _odb
 import linecache
 
+NAVIGATION_COMMAND_FLAG = 1
+
 debug_enabled = 0
 
 
@@ -49,19 +51,7 @@ class Odb(cmd.Cmd):
         self.prompt = "(Odb)<%s>" % _odb.getCurrentTimestamp();
 
     def postcmd(self, stop, line):
-
-        cmd, arg, line = self.parseline(line)
-        if not cmd:
-            return self.quit
-        # Determine if we must stop
-        try:
-            func = getattr(self, 'do_' + cmd)
-        except AttributeError:
-            func = self.default
-        # one of the resuming commands
-        if func.func_name in self.navigation_commands:
-            return 1
-        return self.quit
+        return stop or self.quit
 
     def displayhook(self, obj):
         """Custom displayhook for the exec in default(), which prevents
@@ -96,14 +86,23 @@ class Odb(cmd.Cmd):
             print >> self.stdout, '***', exc_type_name + ':', v
 
     def do_where(self, arg):
+        '''
+        Prints a stacktrace for the current position
+        '''
         self.print_stack_trace()
 
     def do_history(self, arg):
+        '''
+        Lists the events recorded by Odb
+        '''
         events = _odb.getEvents()
         for e in events:
             print e
 
     def do_chistory(self, arg):
+        '''
+        Lists the calls / stack frames recorded by Odb
+        '''
         frames = _odb.getFrames()
         for f in frames:
             self.print_stack_entry(f.filename, f.lineno, f.name)
@@ -119,13 +118,23 @@ class Odb(cmd.Cmd):
                 print '<%s> %s' %(v.timestamp, v.value)
 
     def do_args(self, arg):
+        '''
+        Lists the arguments of the current function
+        '''
         #arguments are the locals present during the 'call'
         print _odb.getFrameArguments()
 
     def do_locals(self, arg):
+        '''
+        Lists the local variables of the current frame
+        '''
         print _odb.getCurrentLocals()
 
     def do_list(self, arg):
+        '''
+        Lists the 10 lines of code around the current instruction
+        Subsequent 'list' insturctions will show more lines
+        '''
         self.lastcmd = 'list'
         curframe = _odb.getCurrentFrame()
         last = None
@@ -169,42 +178,96 @@ class Odb(cmd.Cmd):
             pass
 
     def do_up(self, arg):
+        '''
+        Moves up one frame in the call stack
+        To see the call stack at the current timestamp use 'where'
+        '''
         _odb.moveUpFrames()
+        return NAVIGATION_COMMAND_FLAG
 
     def do_down(self, arg):
+        '''
+        Moves down one frame in the call stack
+        To see the call stack at the current timestamp use 'where'
+        '''
         _odb.moveDownFrames()
+        return NAVIGATION_COMMAND_FLAG
 
     def do_nextf(self, arg):
+        '''
+        Moves to the first timestamp in the next frame in terms of the chronological order in which frames were
+        placed on the call stack
+        To see a list of frames use 'chistory'
+        To see the current call stack use 'where'
+        '''
         _odb.moveNextFrames()
+        return NAVIGATION_COMMAND_FLAG
 
     def do_prevf(self, arg):
+        '''
+        Moves to the first timestamp in the previous frame in terms of the chronological order in which frames were
+        placed on the call stack
+        To see a list of frames use 'chistory'
+        To see the current call stack use 'where'
+        '''
         _odb.movePrevFrames()
+        return NAVIGATION_COMMAND_FLAG
 
     def do_step(self, arg):
+        '''
+        Steps forward one instruction / timestep
+        '''
         _odb.do_step()
+        return NAVIGATION_COMMAND_FLAG
 
     def do_rstep(self,arg):
+        '''
+        Steps backwards one instruction / timestep
+        '''
         _odb.do_rstep()
+        return NAVIGATION_COMMAND_FLAG
 
     def do_next(self, arg):
+        '''
+        Steps forward to the next instruction in the current function OR the return of the current function
+        Steps over any function calls
+        '''
         _odb.do_next()
+        return NAVIGATION_COMMAND_FLAG
 
     def do_rnext(self, arg):
+        '''
+        Steps backwards to the next instruction in the current function OR the call of the current function
+        Steps over any function calls
+        '''
         _odb.do_rnext()
+        return NAVIGATION_COMMAND_FLAG
 
     def do_return(self, arg):
+        '''
+        Steps to the return of the call of the current frame / function
+        '''
         _odb.do_return()
+        return NAVIGATION_COMMAND_FLAG
 
     def do_rreturn(self, arg):
+        '''
+        Steps to the call of the current frame / function
+        '''
         _odb.do_rreturn()
+        return NAVIGATION_COMMAND_FLAG
 
     def do_jump(self, arg):
+        '''
+        Jumps to the specified timestamp
+        '''
         try:
             arg = int(arg)
         except ValueError:
             print >>self.stdout, "*** The 'jump' command requires a line number."
         else:
             _odb.do_jump(arg)
+        return NAVIGATION_COMMAND_FLAG
 
     def do_quit(self, arg):
         self.quit = 1
@@ -221,8 +284,6 @@ class Odb(cmd.Cmd):
     do_n = do_next
     do_rn = do_rnext
 
-    navigation_commands = ['do_next', 'do_prev', 'do_up', 'do_down', 'do_jump', 'do_step', 'do_rstep',
-                           'do_nextf', 'do_prevf', 'do_return', 'do_rreturn']
     # endregion
     def format_stack_entry(self, filename, lineno, name, lprefix=': '):
         s = '%s(%r)' % (filename, lineno)
@@ -259,6 +320,9 @@ class Odb(cmd.Cmd):
             raise
 
     def do_p(self, arg):
+        '''
+        Prints the value of the expression evaluated in the current locals
+        '''
         try:
             print >>self.stdout, repr(self._getval(arg))
         except:
