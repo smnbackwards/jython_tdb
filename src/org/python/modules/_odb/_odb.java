@@ -11,19 +11,19 @@ public class _odb {
 //    private static int LEVEL = Py.MESSAGE;
     private static int LEVEL = Py.COMMENT;
 
-    protected static int timestamp = 0;
     protected static Stack<OdbFrame> frames = new Stack<>();
     protected static LinkedList<OdbEvent> eventHistory = new LinkedList<>();
     protected static OdbFrame parent = null;
 
-    protected static int currentFrame = -1;
-    protected static int currentTimestamp = -1;
+    protected static int currentFrameId = -1;
+    protected static int currentTimestamp = 0;
     public static boolean enabled = false;
 
 
     public static void initializeParent(PyFrame frame){
         if(parent == null){
-            assert timestamp == 0;
+            //TODO -ea isn't enabled!!!
+            assert currentTimestamp == 0;
             assert frames.isEmpty();
             assert eventHistory.isEmpty();
 
@@ -42,7 +42,7 @@ public class _odb {
                     null,
                     parentLocalMap);
             frames.push(parent);
-            currentFrame++;
+            currentFrameId++;
         }
     }
 
@@ -53,7 +53,7 @@ public class _odb {
 
         initializeParent(frame.f_back);
 
-        parent = new OdbFrame(timestamp,
+        parent = new OdbFrame(currentTimestamp,
                 frame.f_code.co_filename,
                 frame.f_back.f_lineno,
                 frame.f_code.co_name,
@@ -62,29 +62,29 @@ public class _odb {
 
         frames.push(parent);
 
-        eventHistory.add(new OdbEvent(timestamp, frame.f_lineno, parent, OdbEvent.Type.CALL));
+        eventHistory.add(new OdbEvent(currentTimestamp, frame.f_lineno, parent, OdbEvent.Type.CALL));
 
-        Py.maybeWrite("TTD", frames.peek().toString(),LEVEL);
-        timestamp++;
+        Py.maybeWrite("TTD call", frames.peek().toString() + " at " + currentTimestamp,LEVEL);
         currentTimestamp++;
-        currentFrame++;
+        //The next frame will be at the top of the stack
+        currentFrameId = frames.size()-1;
     }
 
     public static void returnEvent(PyFrame frame) {
         if (!frames.empty()) {
-            Py.maybeWrite("TTD", "Return from event: " + parent.toString(), LEVEL);
-            eventHistory.add(new OdbEvent(timestamp, frame.f_lineno, parent, OdbEvent.Type.RETURN));
-            currentFrame = frames.search(parent);
+            Py.maybeWrite("TTD return", parent.toString() + " at "+ currentTimestamp, LEVEL);
+            eventHistory.add(new OdbEvent(currentTimestamp, frame.f_lineno, parent, OdbEvent.Type.RETURN));
             parent = parent.parent;
-            timestamp++;
+            //Find the matching frame index
+            currentFrameId = frames.indexOf(parent);
             currentTimestamp++;
         }
     }
 
     public static void lineEvent(PyFrame frame) {
         initializeParent(frame);
-        eventHistory.add(new OdbEvent(timestamp, frame.f_lineno, parent, OdbEvent.Type.LINE));
-        timestamp++;
+        Py.maybeWrite("TTD line", frame.f_lineno + " at "+ currentTimestamp, LEVEL);
+        eventHistory.add(new OdbEvent(currentTimestamp, frame.f_lineno, parent, OdbEvent.Type.LINE));
         currentTimestamp++;
     }
 
@@ -92,7 +92,7 @@ public class _odb {
 
         OdbFrame frame = getCurrentFrame();
         if(frame != null) {
-            Py.maybeWrite("TTD", String.format("Set %s to %s in %s", index, value, frame), LEVEL);
+            Py.maybeWrite("TTD local", String.format("Set %s to %s in %s at %s", index, value, frame, currentTimestamp), LEVEL);
             frame.locals.put(currentTimestamp, index, value);
         } else {
             Py.maybeWrite("TTD", "localEvent, NO FRAME", LEVEL);
@@ -105,14 +105,12 @@ public class _odb {
     }
 
     public static void reset(){
-        timestamp = 0;
-        timestamp = 0;
+        currentTimestamp = 0;
+        currentFrameId = -1;
         frames = new Stack<>();
         eventHistory = new LinkedList<>();
         parent = null;
 
-        currentFrame = -1;
-        currentTimestamp = -1;
 
         //TODO remove dependency on this TraceFunction class / create more generic
         TdbTraceFunction.resetInstructionCount();
@@ -120,7 +118,7 @@ public class _odb {
 
     public static void setup(){
         currentTimestamp = 0;
-        currentFrame = 0;
+        currentFrameId = 0;
         enabled = false;
     }
 
@@ -141,12 +139,12 @@ public class _odb {
     }
 
     public static OdbFrame getCurrentFrame() {
-        return getCurrentEvent().frame;
-//        return frames.elementAt(currentFrame);
+//        return getCurrentEvent().frame;
+        return frames.get(currentFrameId);
     }
 
     public static int getCurrentFrameId(){
-        return currentFrame;
+        return currentFrameId;
     }
 
     public static PyStringMap getCurrentLocals(){
@@ -256,7 +254,7 @@ public class _odb {
     public static void do_jump(int n){
         if(n >= 0 && n < eventHistory.size()){
             currentTimestamp = n;
-            currentFrame = frames.indexOf(getCurrentEvent().frame);
+            currentFrameId = frames.indexOf(getCurrentEvent().frame);
         }
     }
 
@@ -267,8 +265,8 @@ public class _odb {
         }
         if(frame.parent != null){
             //Use parent to climb up call stack
-            currentFrame = frames.indexOf(frame.parent);
-            currentTimestamp = frames.get(currentFrame).timestamp;
+            currentFrameId = frames.indexOf(frame.parent);
+            currentTimestamp = frames.get(currentFrameId).timestamp;
         }
     }
 
@@ -290,21 +288,21 @@ public class _odb {
 
         if(event != null) {
             currentTimestamp = event.timestamp;
-            currentFrame = frames.indexOf(event.frame);
+            currentFrameId = frames.indexOf(event.frame);
         }
     }
 
     public static void moveNextFrames() {
-        if (currentFrame < frames.size() - 1) {
-            currentFrame++;
-            currentTimestamp = frames.get(currentFrame).timestamp;
+        if (currentFrameId < frames.size() - 1) {
+            currentFrameId++;
+            currentTimestamp = frames.get(currentFrameId).timestamp;
         }
     }
 
     public static void movePrevFrames() {
-        if (currentFrame > 0) {
-            currentFrame--;
-            currentTimestamp = frames.get(currentFrame).timestamp;
+        if (currentFrameId > 0) {
+            currentFrameId--;
+            currentTimestamp = frames.get(currentFrameId).timestamp;
         }
     }
 

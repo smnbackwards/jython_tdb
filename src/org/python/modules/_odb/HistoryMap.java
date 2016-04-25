@@ -12,31 +12,6 @@ import java.util.stream.Collectors;
  */
 public class HistoryMap<K>{
 
-
-
-    class LocalValueList {
-
-        Stack<LocalValue> values = new Stack<>();
-
-        public LocalValueList(int timestamp, PyObject value) {
-            insertValue(timestamp, value);
-        }
-
-        public PyObject insertValue(int timestamp, PyObject value) {
-            //TODO return old value if timestamp is overriding?
-            values.push(new LocalValue(timestamp, value));
-            return null;
-        }
-
-        public PyObject getValue(int timestamp) {
-            for(int i = values.size()-1; i >= 0; i--){
-                if( values.get(i).timestamp < timestamp )
-                    return values.get(i).value;
-            }
-            return null;
-        }
-    }
-
     protected Map<K, LocalValueList > map = new HashMap<>();
 
     public int size(int timestamp) {
@@ -65,7 +40,7 @@ public class HistoryMap<K>{
         if(valueList == null){
             return null;
         }
-        return valueList.values.stream().filter(localValue -> localValue.timestamp < timestamp).collect(Collectors.toList());
+        return valueList.values.stream().filter(localValue -> localValue.timestamp <= timestamp).collect(Collectors.toList());
     }
 
     public PyObject remove(Object key) {

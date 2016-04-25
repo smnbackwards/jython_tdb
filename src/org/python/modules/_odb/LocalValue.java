@@ -18,6 +18,11 @@ public class LocalValue {
         this.value = value;
     }
 
+    @Override
+    public String toString() {
+        return String.format("<%s> : %s", timestamp, value);
+    }
+
     @ExposedGet(name = "timestamp")
     public int getTimestamp() {
         return timestamp;
