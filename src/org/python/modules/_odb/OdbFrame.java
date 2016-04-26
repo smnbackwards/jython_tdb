@@ -18,9 +18,9 @@ public class OdbFrame extends PyObject {
     public String methodName;
     @ExposedGet
     public int timestamp;
-    @ExposedGet
+    @ExposedGet(name = "return_timestamp")
     public int returnTimestamp;
-    @ExposedGet
+    @ExposedGet(name = "return_value")
     public PyObject returnValue;
     @ExposedGet
     public String filename;

@@ -2,6 +2,7 @@ package org.python.modules._odb;
 
 import org.python.core.PyObject;
 import org.python.expose.ExposedGet;
+import org.python.expose.ExposedMethod;
 import org.python.expose.ExposedType;
 
 @ExposedType(name = "odb.event")
@@ -30,6 +31,21 @@ public class OdbEvent extends PyObject {
             return String.format("<%s> \t%s \t%s:%s", timestamp, eventType.toString(), "<top level>", lineno);
         }
         return String.format("<%s> \t%s \t%s:%s", timestamp, eventType.toString(), frame.filename, lineno);
+    }
+
+    @ExposedMethod(names = "is_line")
+    public boolean isLine(){
+        return eventType == Type.LINE;
+    }
+
+    @ExposedMethod(names = "is_call")
+    public boolean isCall(){
+        return eventType == Type.CALL;
+    }
+
+    @ExposedMethod(names = "is_return")
+    public boolean isReturn(){
+        return eventType == Type.RETURN;
     }
 
 }

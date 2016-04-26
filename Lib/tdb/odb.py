@@ -17,7 +17,7 @@ def debug(output):
 
 
 class Odb(cmd.Cmd):
-    def __init__(self, stdin=None, stdout=None,  skip=None):
+    def __init__(self, stdin=None, stdout=None, skip=None):
         cmd.Cmd.__init__(self, completekey='tab', stdin=stdin, stdout=stdout)
         self.fncache = {}
         self.quit = 0
@@ -45,9 +45,16 @@ class Odb(cmd.Cmd):
 
     def preloop(self):
         frame = _odb.getCurrentFrame()
-        if frame :
+        if frame:
             event = _odb.getCurrentEvent()
-            self.print_stack_entry(frame.filename, event.lineno, frame.name)
+            if event.is_return():
+                print >> self.stdout, "--Return--"
+
+            if event.is_call():
+                print >> self.stdout, "--Call--"
+
+            self.print_stack_entry(frame.filename, event.lineno, frame.name, frame.return_value)
+
         self.prompt = "(Odb)<%s>" % _odb.getCurrentTimestamp();
 
     def postcmd(self, stop, line):
@@ -115,14 +122,18 @@ class Odb(cmd.Cmd):
         values = _odb.getLocalHistory(arg)
         if values:
             for v in values:
-                print '<%s> %s' %(v.timestamp, v.value)
+                print '<%s> %s' % (v.timestamp, v.value)
 
     def do_args(self, arg):
         '''
         Lists the arguments of the current function
         '''
-        #arguments are the locals present during the 'call'
+        # arguments are the locals present during the 'call'
         print _odb.getFrameArguments()
+
+    def do_retval(self, arg):
+        frame = _odb.getCurrentFrame()
+        print >> self.stdout, "%s returns %s at %s" % (frame.name, frame.return_value, frame.return_timestamp)
 
     def do_locals(self, arg):
         '''
@@ -162,7 +173,7 @@ class Odb(cmd.Cmd):
         filename = curframe.filename
         try:
             for lineno in range(first, last + 1):
-                line = linecache.getline(filename, lineno) #,self.curframe.f_globals)
+                line = linecache.getline(filename, lineno)  # ,self.curframe.f_globals)
                 if not line:
                     print >> self.stdout, '[EOF]'
                     break
@@ -220,7 +231,7 @@ class Odb(cmd.Cmd):
         _odb.do_step()
         return NAVIGATION_COMMAND_FLAG
 
-    def do_rstep(self,arg):
+    def do_rstep(self, arg):
         '''
         Steps backwards one instruction / timestep
         '''
@@ -264,7 +275,7 @@ class Odb(cmd.Cmd):
         try:
             arg = int(arg)
         except ValueError:
-            print >>self.stdout, "*** The 'jump' command requires a line number."
+            print >> self.stdout, "*** The 'jump' command requires a line number."
         else:
             _odb.do_jump(arg)
         return NAVIGATION_COMMAND_FLAG
@@ -275,6 +286,8 @@ class Odb(cmd.Cmd):
     do_q = do_quit
     do_w = do_where
     do_l = do_list
+    do_rv = do_retval
+
     do_u = do_up
     do_d = do_down
     do_nf = do_nextf
@@ -285,7 +298,8 @@ class Odb(cmd.Cmd):
     do_rn = do_rnext
 
     # endregion
-    def format_stack_entry(self, filename, lineno, name, lprefix=': '):
+
+    def format_stack_entry(self, filename, lineno, name, returnvalue=None, lprefix=': '):
         s = '%s(%r)' % (filename, lineno)
         if name:
             s = s + name
@@ -300,10 +314,9 @@ class Odb(cmd.Cmd):
         # else:
         #     s = s + '()'
         s = s + '()'
-        # if '__return__' in frame.f_locals:
-        #     rv = frame.f_locals['__return__']
-        #     s = s + '->'
-        #     s = s + repr.repr(rv)
+        if returnvalue:
+            s = s + '->'
+            s = s + repr(returnvalue)
         line = linecache.getline(filename, lineno)  # , frame.globals)
         if line: s = s + lprefix + line.strip()
         return s
@@ -315,8 +328,9 @@ class Odb(cmd.Cmd):
             t, v = sys.exc_info()[:2]
             if isinstance(t, str):
                 exc_type_name = t
-            else: exc_type_name = t.__name__
-            print >>self.stdout, '***', exc_type_name + ':', repr(v)
+            else:
+                exc_type_name = t.__name__
+            print >> self.stdout, '***', exc_type_name + ':', repr(v)
             raise
 
     def do_p(self, arg):
@@ -324,10 +338,9 @@ class Odb(cmd.Cmd):
         Prints the value of the expression evaluated in the current locals
         '''
         try:
-            print >>self.stdout, repr(self._getval(arg))
+            print >> self.stdout, repr(self._getval(arg))
         except:
             pass
-
 
     def print_stack_trace(self):
         try:
@@ -351,13 +364,12 @@ class Odb(cmd.Cmd):
         except KeyboardInterrupt:
             pass
 
-    def print_stack_entry(self, filename, lineno, name, prompt_prefix='\n  ->'):
+    def print_stack_entry(self, filename, lineno, name, returnvalue=None, prompt_prefix='\n  ->'):
         # if frame is self.curframe:
         #     print >>self.stdout, '>',
         # else:
         print >> self.stdout, ' ',
-        print >> self.stdout, self.format_stack_entry(filename, lineno, name, prompt_prefix)
-
+        print >> self.stdout, self.format_stack_entry(filename, lineno, name, returnvalue, prompt_prefix)
 
     def canonic(self, filename):
         if filename == "<" + filename[1:-1] + ">":
@@ -414,6 +426,7 @@ class Odb(cmd.Cmd):
         print "Program has finished, now entering ODB mode"
         _odb.setup()
         self.control_loop()
+
 
 def main():
     if not sys.argv[1:] or sys.argv[1] in ("--help", "-h"):
