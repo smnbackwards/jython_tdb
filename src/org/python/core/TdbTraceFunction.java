@@ -76,14 +76,18 @@ public class TdbTraceFunction extends PythonTraceFunction {
 
                         if (label.equals("call")) {
                             waitForMainPyFile = false;
+                            _odb.enabled = true;
                             return this;
                         }
                     }
 
-                    _odb.enabled = true;
 
                     if (callDepth == 0 && label.equals("return")) {
-//                        System.out.println("return 0");
+                        if(_odb.enabled){
+                            System.out.println("return 0" + _odb.enabled +frame.f_code.co_filename);
+                            _odb.returnEvent(frame, arg);
+                        }
+                        _odb.enabled = false;
                         tracefunc = null;
                         return null;
                     }
@@ -98,7 +102,7 @@ public class TdbTraceFunction extends PythonTraceFunction {
                     if (label.equals("return")) {
                         lastCallInstructionCount = callReturnMap.pop();
                         callDepth--;
-                        _odb.returnEvent(frame);
+                        _odb.returnEvent(frame, arg);
                     }
 
                     if(label.equals("line")){

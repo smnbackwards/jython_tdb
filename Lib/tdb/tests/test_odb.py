@@ -77,6 +77,7 @@ class OdbFibFrameModelTestCase(unittest.TestCase):
         OdbExecutionModel(5, 2, 20, 20, 12),  # 20
         OdbExecutionModel(1, 0, 21, 5,  0),  # 21
         OdbExecutionModel(0, 22,22, 2,  22),
+        OdbExecutionModel(0, 23,23, 2,  23),
     ]
 
     def setUp(self):

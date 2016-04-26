@@ -70,10 +70,12 @@ public class _odb {
         currentFrameId = frames.size()-1;
     }
 
-    public static void returnEvent(PyFrame frame) {
+    public static void returnEvent(PyFrame frame, PyObject returnValue) {
         if (!frames.empty()) {
             Py.maybeWrite("TTD return", parent.toString() + " at "+ currentTimestamp, LEVEL);
             eventHistory.add(new OdbEvent(currentTimestamp, frame.f_lineno, parent, OdbEvent.Type.RETURN));
+            parent.returnTimestamp = currentTimestamp;
+            parent.returnValue = returnValue;
             parent = parent.parent;
             //Find the matching frame index
             currentFrameId = frames.indexOf(parent);
@@ -101,7 +103,11 @@ public class _odb {
 
     public static void globalEvent(String name, PyObject value) {
         Py.maybeWrite("TTD", String.format("Set global %s to %s", name, value), LEVEL);
-        frames.get(0).locals.put(currentTimestamp, name, value);
+
+//        OdbFrame frame = frames.get(0);
+//        if(frame != null){
+//            frame.locals.put(currentTimestamp, name, value);
+//        }
     }
 
     public static void reset(){
@@ -173,29 +179,16 @@ public class _odb {
     }
 
     public static void do_return(){
-        OdbEvent event = null;
         OdbFrame frame = getCurrentFrame();
 
         //if I am the return event I am looking for then just step 1
-        if( getCurrentEvent().eventType == OdbEvent.Type.RETURN
-                && getCurrentEvent().frame.equals(frame) ){
+        if (getCurrentEvent().eventType == OdbEvent.Type.RETURN
+                && getCurrentEvent().frame.equals(frame)) {
             do_step();
             return;
         }
 
-        for (int i = getCurrentTimestamp()+1; i <eventHistory.size(); i++) {
-            event = eventHistory.get(i);
-            if(event.eventType == OdbEvent.Type.RETURN && event.frame.equals(frame)){
-                break;
-            }
-            event = null;
-        }
-
-        if(event != null){
-            do_jump(event.timestamp);
-        } else {
-            do_jump(eventHistory.size()-1);
-        }
+        do_jump(frame.returnTimestamp);
     }
 
     public static void do_rreturn(){
@@ -216,8 +209,9 @@ public class _odb {
             frame = frame.parent;
         }
 
-        for (int i = getCurrentTimestamp()+1; i <eventHistory.size(); i++) {
-            event = eventHistory.get(i);
+        ListIterator<OdbEvent> it = eventHistory.listIterator(getCurrentTimestamp()+1);
+        while(it.hasNext()){
+            event = it.next();
             if(event.frame.equals(frame)){
                 break;
             }
@@ -237,8 +231,9 @@ public class _odb {
             frame = frame.parent;
         }
 
-        for (int i = getCurrentTimestamp()-1; i >= 0; i--) {
-            event = eventHistory.get(i);
+        ListIterator<OdbEvent> it = eventHistory.listIterator(getCurrentTimestamp());
+        while(it.hasPrevious()){
+            event = it.previous();
             if(event.frame.equals(frame)){
                 break;
             }

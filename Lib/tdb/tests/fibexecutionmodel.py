@@ -30,8 +30,8 @@ class FibExecutionModel():
             self.rreturn_ic = rreturn_ic
 
     model = [
-        ExecutionPoint(1, 0, 1, 0, 22, 0),
-        ExecutionPoint(5, 0, 22, 0, 22, 0),
+        ExecutionPoint(1, 0, 1, 0, 23, 0),
+        ExecutionPoint(5, 0, 22, 0, 23, 0),
         ExecutionPoint(1, 1, 3, 1, 21, 1),  # fib(3) returns at 21
         ExecutionPoint(2, 1, 4, 2, 21, 2),
         ExecutionPoint(4, 1, 21, 3, 21, 2),
@@ -56,7 +56,8 @@ class FibExecutionModel():
         # 20,
         ExecutionPoint(3, 1, 21, 19, 21, 17),
         ExecutionPoint(4, 0, 22, 4, 22, 2),
-        ExecutionPoint(6, 0, 22, 1, 22, 0),
+        ExecutionPoint(6, 0, 23, 1, 23, 0),
+        ExecutionPoint(6, 0, 23, 22, 23, 0),
     ]
 
     filename = 'examples/fib.py'
