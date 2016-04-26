@@ -18,6 +18,7 @@ public class _odb {
     protected static int currentFrameId = -1;
     protected static int currentTimestamp = 0;
     public static boolean enabled = false;
+    public static boolean replaying = false;
 
 
     public static void initializeParent(PyFrame frame){
@@ -126,6 +127,7 @@ public class _odb {
         currentTimestamp = 0;
         currentFrameId = 0;
         enabled = false;
+        replaying = true;
     }
 
     public static List<OdbEvent> getEvents() {
@@ -159,6 +161,10 @@ public class _odb {
 
     public static PyObject lookupLocal(String key){
         return getCurrentFrame().locals.get(currentTimestamp, key);
+    }
+
+    public static PyObject lookupLocalField(String local, String field){
+        return ((PyInstance)lookupLocal(local)).historyMap.get(currentTimestamp, field);
     }
 
     public static List<LocalValue> getLocalHistory(String key) {
