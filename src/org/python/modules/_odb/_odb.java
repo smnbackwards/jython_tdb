@@ -167,7 +167,7 @@ public class _odb {
         return ((PyInstance)lookupLocal(local)).historyMap.get(currentTimestamp, field);
     }
 
-    public static List<LocalValue> getLocalHistory(String key) {
+    public static List<HistoryValue<PyObject>> getLocalHistory(String key) {
         return getCurrentFrame().locals.getBefore(currentTimestamp, key);
     }
 

@@ -8,6 +8,8 @@ import org.python.expose.ExposedMethod;
 import org.python.expose.ExposedNew;
 import org.python.expose.ExposedType;
 import org.python.expose.MethodType;
+import org.python.modules._odb.HistoryList;
+import org.python.modules._odb._odb;
 import org.python.util.Generic;
 
 import java.util.Collection;
@@ -32,6 +34,7 @@ public class PyList extends PySequenceList implements List {
     }
 
     private final List<PyObject> list;
+    private final HistoryList<PyObject> historyList = new HistoryList<>();
     public volatile int gListAllocatedStatus = -1;
 
     public PyList() {
@@ -494,18 +497,38 @@ public class PyList extends PySequenceList implements List {
             return "[...]";
         }
         StringBuilder buf = new StringBuilder("[");
-        int length = size();
-        int i = 0;
-        for (PyObject item : list) {
-            buf.append(item.__repr__().toString());
-            if (i < length - 1) {
-                buf.append(", ");
+
+        if (_odb.replaying && historyList.size(_odb.getCurrentTimestamp()) > 0) {
+            int length = historyList.size(_odb.getCurrentTimestamp());
+            int i = 0;
+
+            for (Iterator<PyObject> it = historyList.getIterator(_odb.getCurrentTimestamp());
+                 it.hasNext();
+                    ) {
+                buf.append(it.next().__repr__().toString());
+                if (i < length - 1) {
+                    buf.append(", ");
+                }
+                i++;
             }
-            i++;
+            buf.append("]");
+            ts.exitRepr(this);
+            return buf.toString();
+        } else {
+
+            int length = size();
+            int i = 0;
+            for (PyObject item : list) {
+                buf.append(item.__repr__().toString());
+                if (i < length - 1) {
+                    buf.append(", ");
+                }
+                i++;
+            }
+            buf.append("]");
+            ts.exitRepr(this);
+            return buf.toString();
         }
-        buf.append("]");
-        ts.exitRepr(this);
-        return buf.toString();
     }
 
     /**
@@ -1116,16 +1139,25 @@ public class PyList extends PySequenceList implements List {
     @Override
     public synchronized void pyadd(int index, PyObject element) {
         list.add(index, element);
+        if (_odb.enabled) {
+            historyList.add(_odb.getCurrentTimestamp(), index, element);
+        }
     }
 
     @Override
     public synchronized boolean pyadd(PyObject o) {
         list.add(o);
+        if (_odb.enabled) {
+            historyList.add(_odb.getCurrentTimestamp(), o);
+        }
         return true;
     }
 
     @Override
     public synchronized PyObject pyget(int index) {
+        if (_odb.replaying && historyList.size(_odb.getCurrentTimestamp()) > 0) {
+            return historyList.get(_odb.getCurrentTimestamp(), index);
+        }
         return list.get(index);
     }
 
@@ -1168,6 +1200,9 @@ public class PyList extends PySequenceList implements List {
 
     @Override
     public synchronized int size() {
+        if(_odb.replaying){
+            return historyList.size(_odb.getCurrentTimestamp());
+        }
         return list.size();
     }
 

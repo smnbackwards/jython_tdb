@@ -1,6 +1,5 @@
 package org.python.modules._odb;
 
-import org.python.core.Py;
 import org.python.core.PyObject;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
@@ -35,7 +34,7 @@ public class HistoryMap<K>{
         }
     }
 
-    public List<LocalValue> getBefore(int timestamp, Object key) {
+    public List<HistoryValue<PyObject>> getBefore(int timestamp, Object key) {
         LocalValueList valueList = map.get(key);
         if(valueList == null){
             return null;
