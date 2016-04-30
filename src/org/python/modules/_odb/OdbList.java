@@ -1,16 +1,27 @@
 package org.python.modules._odb;
 
 import java.util.*;
+import java.util.function.UnaryOperator;
 
 /**
  * Created by nms12 on 4/29/2016.
  */
-public class OdbList<V> implements List<V> {
+public class OdbList<V> implements List<V>, RandomAccess {
     private List<V> list;
     private HistoryList<V> historyList;
 
+    public OdbList(){
+        list = new ArrayList<>();
+        historyList = new HistoryList<>();
+    }
+
+    public OdbList(Collection<? extends V> c){
+        list = new ArrayList<>(c);
+        historyList = new HistoryList<>();
+    }
+
     protected boolean isReplaying(){
-        return _odb.replaying;
+        return _odb.replaying && historyList.hasHistory();
     }
 
     protected boolean isRecording(){
@@ -21,48 +32,56 @@ public class OdbList<V> implements List<V> {
         return _odb.getCurrentTimestamp();
     }
 
+    @Override
+    public String toString() {
+        return list.toString();
+    }
 
     @Override
     public int size() {
         if(isReplaying()){
             return historyList.size(getTimestamp());
-        } else {
-            return list.size();
         }
+        return list.size();
     }
 
     @Override
     public boolean isEmpty() {
         if(isReplaying()){
             return historyList.size(getTimestamp()) == 0;
-        } else {
-            return list.isEmpty();
         }
+        return list.isEmpty();
     }
 
     @Override
     public boolean contains(Object o) {
-        return false;
+        if(isReplaying()){
+            return historyList.contains(getTimestamp(), o);
+        }
+        return list.contains(o);
     }
 
     @Override
     public Iterator<V> iterator() {
         if(isReplaying()){
             return historyList.getIterator(getTimestamp());
-        } else {
-            return list.iterator();
         }
+        return list.iterator();
     }
 
     @Override
     public Object[] toArray() {
-        //TODO
+        if(isReplaying()){
+            return historyList.toArray(getTimestamp());
+        }
         return list.toArray();
     }
 
     @Override
     public <T> T[] toArray(T[] a) {
-        //TODO
+        if(isReplaying()){
+            throw new UnsupportedOperationException("toArray(T[]) in replay mode");
+        }
         return list.toArray(a);
     }
 
@@ -77,27 +96,33 @@ public class OdbList<V> implements List<V> {
     @Override
     public boolean remove(Object o) {
         if(isRecording()){
-//            historyList.remove(getTimestamp(), o);
+            historyList.remove(getTimestamp(), o);
         }
         return list.remove(o);
     }
 
     @Override
     public boolean containsAll(Collection<?> c) {
-        if(isRecording()){
-//            historyList.add(getTimestamp(), v);
+        if(isReplaying()){
+            return historyList.containsAll(getTimestamp(), c);
         }
         return list.containsAll(c);
     }
 
     @Override
     public boolean addAll(Collection<? extends V> c) {
-        return list.containsAll(c);
+        if(isRecording()){
+            historyList.addAll(getTimestamp(), c);
+        }
+        return list.addAll(c);
     }
 
     @Override
     public boolean addAll(int index, Collection<? extends V> c) {
-        return list.addAll(index,c);
+        if(isRecording()){
+            historyList.addAll(getTimestamp(), index, c);
+        }
+        return list.addAll(index, c);
     }
 
     @Override
@@ -111,30 +136,49 @@ public class OdbList<V> implements List<V> {
     }
 
     @Override
+    public void replaceAll(UnaryOperator<V> operator) {
+        list.replaceAll(operator);
+    }
+
+    @Override
+    public void sort(Comparator<? super V> c) {
+        list.sort(c);
+    }
+
+    @Override
     public void clear() {
         list.clear();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return list.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return list.hashCode();
     }
 
     @Override
     public V get(int index) {
         if(isReplaying()){
             return historyList.get(getTimestamp(), index);
-        } else {
-            return list.get(index);
         }
+        return list.get(index);
     }
 
     @Override
     public V set(int index, V element) {
         if(isRecording()){
-//            historyList.add(getTimestamp(), v);
+            historyList.set(getTimestamp(), index, element);
         }
         return list.set(index, element);
     }
 
     @Override
     public void add(int index, V element) {
-        if(isRecording()) {
+        if(isRecording()){
             historyList.add(getTimestamp(), index, element);
         }
         list.add(index, element);
@@ -142,31 +186,51 @@ public class OdbList<V> implements List<V> {
 
     @Override
     public V remove(int index) {
+        if(isRecording()){
+            historyList.remove(getTimestamp(), index);
+        }
         return list.remove(index);
     }
 
     @Override
     public int indexOf(Object o) {
+        if(isReplaying()){
+            return historyList.indexOf(getTimestamp(), o);
+        }
         return list.indexOf(o);
     }
 
     @Override
     public int lastIndexOf(Object o) {
+        if(isReplaying()){
+            return historyList.lastIndexOf(getTimestamp(), o);
+        }
         return list.lastIndexOf(o);
     }
 
     @Override
     public ListIterator<V> listIterator() {
+        if(isReplaying()){
+            return historyList.listIterator(getTimestamp());
+        }
         return list.listIterator();
     }
 
     @Override
     public ListIterator<V> listIterator(int index) {
+        if(isReplaying()){
+            return historyList.listIterator(getTimestamp(), index);
+        }
         return list.listIterator(index);
     }
 
     @Override
     public List<V> subList(int fromIndex, int toIndex) {
         return list.subList(fromIndex, toIndex);
+    }
+
+    @Override
+    public Spliterator<V> spliterator() {
+        return list.spliterator();
     }
 }

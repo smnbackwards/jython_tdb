@@ -8,8 +8,7 @@ import org.python.expose.ExposedMethod;
 import org.python.expose.ExposedNew;
 import org.python.expose.ExposedType;
 import org.python.expose.MethodType;
-import org.python.modules._odb.HistoryList;
-import org.python.modules._odb._odb;
+import org.python.modules._odb.OdbList;
 import org.python.util.Generic;
 
 import java.util.Collection;
@@ -34,7 +33,6 @@ public class PyList extends PySequenceList implements List {
     }
 
     private final List<PyObject> list;
-    private final HistoryList<PyObject> historyList = new HistoryList<>();
     public volatile int gListAllocatedStatus = -1;
 
     public PyList() {
@@ -43,29 +41,17 @@ public class PyList extends PySequenceList implements List {
 
     public PyList(PyType type) {
         super(type);
-        list = Generic.list();
-    }
-
-    private PyList(List list, boolean convert) {
-        super(TYPE);
-        if (!convert) {
-            this.list = list;
-        } else {
-            this.list = Generic.list();
-            for (Object o : list) {
-                add(o);
-            }
-        }
+        list = new OdbList<>();
     }
 
     public PyList(PyType type, PyObject[] elements) {
         super(type);
-        list = new ArrayList<PyObject>(Arrays.asList(elements));
+        list = new OdbList<>(Arrays.asList(elements));
     }
 
     public PyList(PyType type, Collection c) {
         super(type);
-        list = new ArrayList<PyObject>(c.size());
+        list = new OdbList<>();
         for (Object o : c) {
             add(o);
         }
@@ -87,7 +73,7 @@ public class PyList extends PySequenceList implements List {
     }
 
     public static PyList fromList(List<PyObject> list) {
-        return new PyList(list, false);
+        return new PyList(list);
     }
 
     List<PyObject> getList() {
@@ -95,7 +81,7 @@ public class PyList extends PySequenceList implements List {
     }
 
     private static List<PyObject> listify(Iterator<PyObject> iter) {
-        List<PyObject> list = Generic.list();
+        List<PyObject> list = new OdbList<>();
         while (iter.hasNext()) {
             list.add(iter.next());
         }
@@ -497,38 +483,18 @@ public class PyList extends PySequenceList implements List {
             return "[...]";
         }
         StringBuilder buf = new StringBuilder("[");
-
-        if (_odb.replaying && historyList.size(_odb.getCurrentTimestamp()) > 0) {
-            int length = historyList.size(_odb.getCurrentTimestamp());
-            int i = 0;
-
-            for (Iterator<PyObject> it = historyList.getIterator(_odb.getCurrentTimestamp());
-                 it.hasNext();
-                    ) {
-                buf.append(it.next().__repr__().toString());
-                if (i < length - 1) {
-                    buf.append(", ");
-                }
-                i++;
+        int length = size();
+        int i = 0;
+        for (PyObject item : list) {
+            buf.append(item.__repr__().toString());
+            if (i < length - 1) {
+                buf.append(", ");
             }
-            buf.append("]");
-            ts.exitRepr(this);
-            return buf.toString();
-        } else {
-
-            int length = size();
-            int i = 0;
-            for (PyObject item : list) {
-                buf.append(item.__repr__().toString());
-                if (i < length - 1) {
-                    buf.append(", ");
-                }
-                i++;
-            }
-            buf.append("]");
-            ts.exitRepr(this);
-            return buf.toString();
+            i++;
         }
+        buf.append("]");
+        ts.exitRepr(this);
+        return buf.toString();
     }
 
     /**
@@ -1139,25 +1105,16 @@ public class PyList extends PySequenceList implements List {
     @Override
     public synchronized void pyadd(int index, PyObject element) {
         list.add(index, element);
-        if (_odb.enabled) {
-            historyList.add(_odb.getCurrentTimestamp(), index, element);
-        }
     }
 
     @Override
     public synchronized boolean pyadd(PyObject o) {
         list.add(o);
-        if (_odb.enabled) {
-            historyList.add(_odb.getCurrentTimestamp(), o);
-        }
         return true;
     }
 
     @Override
     public synchronized PyObject pyget(int index) {
-        if (_odb.replaying && historyList.size(_odb.getCurrentTimestamp()) > 0) {
-            return historyList.get(_odb.getCurrentTimestamp(), index);
-        }
         return list.get(index);
     }
 
@@ -1200,9 +1157,6 @@ public class PyList extends PySequenceList implements List {
 
     @Override
     public synchronized int size() {
-        if(_odb.replaying){
-            return historyList.size(_odb.getCurrentTimestamp());
-        }
         return list.size();
     }
 
