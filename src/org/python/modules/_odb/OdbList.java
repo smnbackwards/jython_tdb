@@ -5,6 +5,8 @@ import java.util.function.UnaryOperator;
 
 /**
  * Created by nms12 on 4/29/2016.
+ * A list implementation tied to the ODB omniscient debugger module
+ * When recording is enabled, actions performed on this list are
  */
 public class OdbList<V> implements List<V>, RandomAccess {
     private List<V> list;
@@ -64,7 +66,7 @@ public class OdbList<V> implements List<V>, RandomAccess {
     @Override
     public Iterator<V> iterator() {
         if(isReplaying()){
-            return historyList.getIterator(getTimestamp());
+            return historyList.iterator(getTimestamp());
         }
         return list.iterator();
     }
@@ -80,6 +82,7 @@ public class OdbList<V> implements List<V>, RandomAccess {
     @Override
     public <T> T[] toArray(T[] a) {
         if(isReplaying()){
+            //TODO
             throw new UnsupportedOperationException("toArray(T[]) in replay mode");
         }
         return list.toArray(a);
@@ -127,37 +130,44 @@ public class OdbList<V> implements List<V>, RandomAccess {
 
     @Override
     public boolean removeAll(Collection<?> c) {
-        return list.removeAll(c);
+        boolean modified = list.removeAll(c);
+        if(isRecording()){
+            historyList.update(getTimestamp(), list);
+        }
+        return modified;
     }
 
     @Override
     public boolean retainAll(Collection<?> c) {
-        return list.retainAll(c);
+        boolean modified = list.retainAll(c);
+        if(isRecording()){
+            historyList.update(getTimestamp(), list);
+        }
+        return modified;
     }
 
     @Override
     public void replaceAll(UnaryOperator<V> operator) {
         list.replaceAll(operator);
+        if(isRecording()){
+            historyList.update(getTimestamp(), list);
+        }
     }
 
     @Override
     public void sort(Comparator<? super V> c) {
         list.sort(c);
+        if(isRecording()){
+            historyList.update(getTimestamp(), list);
+        }
     }
 
     @Override
     public void clear() {
+        if(isRecording()){
+            historyList.clear(getTimestamp());
+        }
         list.clear();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        return list.equals(o);
-    }
-
-    @Override
-    public int hashCode() {
-        return list.hashCode();
     }
 
     @Override
@@ -226,11 +236,13 @@ public class OdbList<V> implements List<V>, RandomAccess {
 
     @Override
     public List<V> subList(int fromIndex, int toIndex) {
+        //TODO
         return list.subList(fromIndex, toIndex);
     }
 
     @Override
     public Spliterator<V> spliterator() {
+        //TODO
         return list.spliterator();
     }
 }

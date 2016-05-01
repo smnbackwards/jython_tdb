@@ -18,7 +18,7 @@ public class HistoryList<V> {
     }
 
     public boolean contains(int timestamp, Object o) {
-        return indexOf(timestamp, o) > 0;
+        return indexOf(timestamp, o) >= 0;
     }
 
     public boolean containsAll(int timestamp, Collection<?> c) {
@@ -29,7 +29,14 @@ public class HistoryList<V> {
         return list.stream().limit(size(timestamp)).map(l -> l.getValue(timestamp)).toArray();
     }
 
+    public void clear(int timestamp){
+        size.insertValue(timestamp, 0);
+    }
+
     public V get(int timestamp, int index) {
+        if(index < 0 || index >= size(timestamp)){
+            throw new IndexOutOfBoundsException();
+        }
         return list.get(index).getValue(timestamp);
     }
 
@@ -73,8 +80,9 @@ public class HistoryList<V> {
         if (index >= 0 && index <= currentSize) {
             list.get(index).insertValue(timestamp, element);
             return list.get(index).getValue(timestamp - 1);
+        } else {
+            throw new IndexOutOfBoundsException();
         }
-        return null;
     }
 
     public V remove(int timestamp, int index) {
@@ -125,7 +133,7 @@ public class HistoryList<V> {
         return false;
     }
 
-    public Iterator<V> getIterator(int timestamp) {
+    public Iterator<V> iterator(int timestamp) {
         return new Itr(timestamp);
     }
 
@@ -138,7 +146,11 @@ public class HistoryList<V> {
     }
 
     public boolean addAll(int timestamp, Collection<? extends V> c) {
-        c.forEach(v -> list.add(new HistoryValueList<V>(timestamp, v)));
+        int currentSize = size(timestamp);
+        int i = 0;
+        for (Iterator<? extends V> itr = c.iterator(); itr.hasNext(); ) {
+            setOrAdd(currentSize+ (i++), timestamp, itr.next() );
+        }
         size.insertValue(timestamp, size.peekValue() + c.size());
         return c.size() != 0;
     }
@@ -158,10 +170,10 @@ public class HistoryList<V> {
                         list.get(insertIndex).getValue(timestamp-1)
                         : null;
 
-                setOrAddListValue(insertIndex, timestamp, insertValue);
+                setOrAdd(insertIndex, timestamp, insertValue);
 
                 if(currentValue != null) {
-                    setOrAddListValue(shuffleIndex, timestamp, currentValue);
+                    setOrAdd(shuffleIndex, timestamp, currentValue);
                 }
             }
 
@@ -171,7 +183,7 @@ public class HistoryList<V> {
         return false;
     }
 
-    protected void setOrAddListValue(int index, int timestamp, V value){
+    protected void setOrAdd(int index, int timestamp, V value){
         if(index - list.size() > 1){
             throw new IndexOutOfBoundsException("only supports increasing the list by 1 value at a time");
         }
@@ -180,6 +192,18 @@ public class HistoryList<V> {
         } else {
             list.get(index).insertValue(timestamp, value);
         }
+    }
+
+    public void update(int timestamp, List<V> referenceList){
+        Objects.requireNonNull(referenceList);
+        if(referenceList.size() > size(timestamp)){
+            throw new UnsupportedOperationException("the reference list must be the same size or smaller");
+        }
+
+        for (ListIterator<V> it = referenceList.listIterator(); it.hasNext(); ) {
+            set(timestamp, it.nextIndex(), it.next() );
+        }
+        this.size.insertValue(timestamp, referenceList.size());
     }
 
     private class Itr implements Iterator<V> {
