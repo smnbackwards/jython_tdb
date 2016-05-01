@@ -1,5 +1,7 @@
 package org.python.modules._odb;
 
+import org.python.core.Py;
+
 import java.util.*;
 import java.util.function.UnaryOperator;
 
@@ -23,11 +25,11 @@ public class OdbList<V> implements List<V>, RandomAccess {
     }
 
     protected boolean isReplaying(){
-        return _odb.replaying && historyList.hasHistory();
+        return _odb.replaying;// && historyList.hasHistory();
     }
 
     protected boolean isRecording(){
-        return _odb.enabled;
+        return true;//TODO is this the paradigm we want to use? _odb.enabled;
     }
 
     protected int getTimestamp(){

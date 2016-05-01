@@ -16,7 +16,7 @@ public class _odb {
     protected static OdbFrame parent = null;
 
     protected static int currentFrameId = -1;
-    protected static int currentTimestamp = 0;
+    public static int currentTimestamp = 0;
     public static boolean enabled = false;
     public static boolean replaying = false;
 
@@ -92,6 +92,11 @@ public class _odb {
     }
 
     public static void localEvent(String index, PyObject value){
+
+        if(parent == null){
+            //allows us to test certain features without invoking the debugger
+            return;
+        }
 
         OdbFrame frame = getCurrentFrame();
         if(frame != null) {

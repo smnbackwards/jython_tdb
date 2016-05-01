@@ -9,6 +9,7 @@ import org.python.expose.ExposedNew;
 import org.python.expose.ExposedType;
 import org.python.expose.MethodType;
 import org.python.modules._odb.OdbList;
+import org.python.modules._odb._odb;
 import org.python.util.Generic;
 
 import java.util.Collection;
@@ -41,17 +42,18 @@ public class PyList extends PySequenceList implements List {
 
     public PyList(PyType type) {
         super(type);
-        list = new OdbList<>();
+        list = _odb.enabled ? new OdbList<>() : new ArrayList<>();
     }
 
     public PyList(PyType type, PyObject[] elements) {
         super(type);
-        list = new OdbList<>(Arrays.asList(elements));
+        list = _odb.enabled ? new OdbList<>(Arrays.asList(elements))
+                : new ArrayList<>(Arrays.asList(elements));
     }
 
     public PyList(PyType type, Collection c) {
         super(type);
-        list = new OdbList<>();
+        list = _odb.enabled ? new OdbList<>() : new ArrayList<>();
         for (Object o : c) {
             add(o);
         }
