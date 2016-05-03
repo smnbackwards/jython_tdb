@@ -13,6 +13,34 @@ public class HistoryList<V> {
         return size.values.size() > 1;
     }
 
+    private int rangeCheck(int timestamp, int index) {
+        int size = size(timestamp);
+        if (index >= size || index < 0) {
+            throw new IndexOutOfBoundsException(outOfBoundsMsg(timestamp, index));
+        } else
+            return size;
+    }
+
+    /**
+     * A version of rangeCheck used by add and addAll.
+     */
+    private int rangeCheckForAdd(int timestamp, int index) {
+        int size = size(timestamp);
+        if (index > size || index < 0) {
+            throw new IndexOutOfBoundsException(outOfBoundsMsg(timestamp, index));
+        } else
+            return size;
+    }
+
+    /**
+     * Constructs an IndexOutOfBoundsException detail message.
+     * Of the many possible refactorings of the error handling code,
+     * this "outlining" performs best with both server and client VMs.
+     */
+    private String outOfBoundsMsg(int timestamp, int index) {
+        return "Timestamp: " + timestamp + ", Index: " + index + ", Size: " + size(timestamp);
+    }
+
     public int size(int timestamp) {
         return size.getValue(timestamp);
     }
@@ -29,19 +57,37 @@ public class HistoryList<V> {
         return list.stream().limit(size(timestamp)).map(l -> l.getValue(timestamp)).toArray();
     }
 
-    public void clear(int timestamp){
+    public void clear(int timestamp) {
         size.insertValue(timestamp, 0);
     }
 
+    public void removeRange(int timestamp, int fromIndex, int toIndex) {
+        int size = size(timestamp);
+        if (fromIndex == 0 && toIndex == size) {
+            clear(timestamp);
+        } else {
+            if (fromIndex < 0) {
+                throw new IndexOutOfBoundsException();
+            }
+
+            int numMoved = size - toIndex;
+            for (int i = 0; i < numMoved; i++) {
+                set(timestamp, fromIndex + i, get(timestamp, toIndex + i));
+            }
+
+            this.size.insertValue(timestamp, size - (toIndex - fromIndex));
+        }
+    }
+
     public V get(int timestamp, int index) {
-        if(index < 0 || index >= size(timestamp)){
+        if (index < 0 || index >= size(timestamp)) {
             throw new IndexOutOfBoundsException();
         }
         return list.get(index).getValue(timestamp);
     }
 
     public void add(int timestamp, V value) {
-        int currentSize =  size.getValue(timestamp);
+        int currentSize = size.getValue(timestamp);
         if (currentSize < list.size()) {
             //The backing list has more elements than the reported size
             //So just store in the existing element
@@ -53,50 +99,42 @@ public class HistoryList<V> {
     }
 
     public void add(int timestamp, int index, V value) {
-        int currentSize = size.peekValue();
-        if (index >= 0 && index <= currentSize) {
-            //Shuffle down the old values
-            for (int i = index + 1; i < currentSize; i++) {
-                list.get(i).insertValue(timestamp, list.get(i - 1).getValue(timestamp - 1));
-            }
-            //shuffle the last value to a new entry
-            if (currentSize > 0) {
-                add(timestamp, list.get(currentSize - 1).getValue(timestamp - 1));
-            }
-
-            //add the new value
-            if (index < list.size()) {
-                list.get(index).insertValue(timestamp, value);
-            } else {
-                list.add(new HistoryValueList<V>(timestamp, value));
-            }
-            //update the size (use currentSize, since add(..) updates size as well)
-            size.insertValue(timestamp, currentSize + 1);
+        int currentSize = rangeCheckForAdd(timestamp, index);
+        //Shuffle down the old values
+        int past = timestamp == 0 ? 0 : timestamp - 1;
+        for (int i = index + 1; i < currentSize; i++) {
+            list.get(i).insertValue(timestamp, list.get(i - 1).getValue(past));
         }
+        //shuffle the last value to a new entry
+        if (currentSize > 0) {
+            HistoryValueList<V> valueList = list.get(currentSize - 1);
+            add(timestamp, valueList.getValue(past));
+        }
+
+        //add the new value
+        if (index < list.size()) {
+            list.get(index).insertValue(timestamp, value);
+        } else {
+            list.add(new HistoryValueList<V>(timestamp, value));
+        }
+        //update the size (use currentSize, since add(..) updates size as well)
+        size.insertValue(timestamp, currentSize + 1);
     }
 
     public V set(int timestamp, int index, V element) {
-        int currentSize = size.peekValue();
-        if (index >= 0 && index <= currentSize) {
-            list.get(index).insertValue(timestamp, element);
-            return list.get(index).getValue(timestamp - 1);
-        } else {
-            throw new IndexOutOfBoundsException();
-        }
+        rangeCheck(timestamp - 1, index);
+        list.get(index).insertValue(timestamp, element);
+        return list.get(index).getValue(timestamp - 1);
     }
 
     public V remove(int timestamp, int index) {
-        int currentSize = size.peekValue();
-        if (index >= 0 && index < currentSize) {
-            size.insertValue(timestamp, currentSize - 1);
-            V value = list.get(index).peekValue();
-            for (int i = index; i < currentSize - 1; i++) {
-                list.get(i).insertValue(timestamp, list.get(i + 1).peekValue());
-            }
-            return value;
+        int currentSize = rangeCheck(timestamp, index);
+        size.insertValue(timestamp, currentSize - 1);
+        V value = list.get(index).peekValue();
+        for (int i = index; i < currentSize - 1; i++) {
+            list.get(i).insertValue(timestamp, list.get(i + 1).peekValue());
         }
-
-        return null;
+        return value;
     }
 
     public int indexOf(int timestamp, Object o) {
@@ -149,59 +187,55 @@ public class HistoryList<V> {
         int currentSize = size(timestamp);
         int i = 0;
         for (Iterator<? extends V> itr = c.iterator(); itr.hasNext(); ) {
-            setOrAdd(currentSize+ (i++), timestamp, itr.next() );
+            setOrAdd(currentSize + (i++), timestamp, itr.next());
         }
         size.insertValue(timestamp, size.peekValue() + c.size());
         return c.size() != 0;
     }
 
     public boolean addAll(int timestamp, int index, Collection<? extends V> c) {
-        int currentSize = size.peekValue();
+        int currentSize = size(timestamp);
         int offset = c.size();
         if (index >= 0 && index <= currentSize) {
             Iterator<? extends V> insertIterator = c.iterator();
+            int pastTime = timestamp <= 0 ? 0 : timestamp - 1;
             //Shuffle down the old values
-            for (int i = 0; i < offset; i++) {
-                int insertIndex = i + index;
-                V insertValue = insertIterator.next();
-
-                int shuffleIndex = insertIndex + offset;
-                V currentValue = insertIndex < list.size() ?
-                        list.get(insertIndex).getValue(timestamp-1)
-                        : null;
-
-                setOrAdd(insertIndex, timestamp, insertValue);
-
-                if(currentValue != null) {
-                    setOrAdd(shuffleIndex, timestamp, currentValue);
+            for (int i = index; i < offset + currentSize; i++) {
+                if (i < index + offset) {
+                    V insertValue = insertIterator.next();
+                    setOrAdd(i, timestamp, insertValue);
+                } else {
+                    V currentValue = list.get(i - offset).getValue(pastTime);
+                    setOrAdd(i, timestamp, currentValue);
                 }
             }
 
-            size.insertValue(timestamp, size.peekValue() + offset);
+            size.insertValue(timestamp, currentSize + offset);
         }
 
         return false;
     }
 
-    protected void setOrAdd(int index, int timestamp, V value){
-        if(index - list.size() > 1){
+    protected void setOrAdd(int index, int timestamp, V value) {
+        if (index - list.size() > 1) {
             throw new IndexOutOfBoundsException("only supports increasing the list by 1 value at a time");
         }
-        if(index >= list.size()){
+        if (index >= list.size()) {
             list.add(new HistoryValueList<V>(timestamp, value));
         } else {
             list.get(index).insertValue(timestamp, value);
         }
     }
 
-    public void update(int timestamp, List<V> referenceList){
+    public void update(int timestamp, List<V> referenceList) {
         Objects.requireNonNull(referenceList);
-        if(referenceList.size() > size(timestamp)){
+        if (referenceList.size() > size(timestamp)) {
             throw new UnsupportedOperationException("the reference list must be the same size or smaller");
         }
 
         for (ListIterator<V> it = referenceList.listIterator(); it.hasNext(); ) {
-            set(timestamp, it.nextIndex(), it.next() );
+            int index = it.nextIndex();
+            list.get(index).insertValue(timestamp, it.next());
         }
         this.size.insertValue(timestamp, referenceList.size());
     }

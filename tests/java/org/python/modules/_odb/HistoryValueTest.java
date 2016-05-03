@@ -25,31 +25,4 @@ public class HistoryValueTest {
 
         assertEquals(a, v.getValue());
     }
-
-    @Test
-    public void testGetValueBeforeTimestampIsNull(){
-        String a = "a";
-        HistoryValue<String> v = new HistoryValue<>(0, a);
-
-        assertNull(v.getValue(-1));
-        assertNull(v.getValue(-10));
-    }
-
-    @Test
-    public void testGetValueAtTimestampIsValue(){
-        String a = "a";
-        HistoryValue<String> v = new HistoryValue<>(0, a);
-
-        assertEquals(a, v.getValue(0));
-    }
-
-    @Test
-    public void testGetValueAfterTimestampIsValue(){
-        String a = "a";
-        HistoryValue<String> v = new HistoryValue<>(0, a);
-
-        assertEquals(a, v.getValue(1));
-        assertEquals(a, v.getValue(10));
-    }
-
 }

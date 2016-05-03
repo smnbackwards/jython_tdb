@@ -4,8 +4,8 @@ package org.python.modules._odb;
  * Created by nms12 on 4/27/2016.
  */
 public class HistoryValue<V> {
-        int timestamp;
-        V value;
+        protected int timestamp;
+        protected V value;
 
         public HistoryValue(int timestamp, V value) {
             this.timestamp = timestamp;
@@ -25,11 +25,4 @@ public class HistoryValue<V> {
             return value;
         }
 
-        public V getValue(int timestamp) {
-            if (timestamp >= this.timestamp) {
-                return this.value;
-            } else {
-                return null;
-            }
-        }
     }

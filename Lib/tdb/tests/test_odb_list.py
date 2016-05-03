@@ -130,9 +130,15 @@ class ListTestCase(unittest.TestCase):
         [1, 2, 3, 4, 5]
         )
 
+# TODO test slicing
+# TODO test scenario's after removing elements from the list
+# TODO test scenarios with many different levels of removed elements
+# TODO test iterator
+# TODO test various list(..) functions
+# TODO test lists of more complex objects to make sure fields and references are handled correctly
+
 def test_main():
     test_support.verbose = 1
-    # test_support.run_unittest(PdbTestCase)
     test_support.run_unittest(ListTestCase)
 
 if __name__ == '__main__':

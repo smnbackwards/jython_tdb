@@ -533,6 +533,24 @@ public class HistoryListTest {
     }
 
     @Test
+    public void testAddAllIndexStart() throws Exception {
+        HistoryList<String> list = new HistoryList<>();
+
+        String a = "a";
+        String b = "b";
+
+        list.add(0, b);
+        list.addAll(1, 0, Arrays.asList(b, a, b, a));
+
+        assertEquals(b, list.get(1, 0));
+        assertEquals(a, list.get(1, 1));
+        assertEquals(b, list.get(1, 2));
+        assertEquals(a, list.get(1, 3));
+        assertEquals(b, list.get(1, 4));
+        assertEquals(5, list.size(1));
+    }
+
+    @Test
     public void testAddAllAfterRemove() throws Exception
     {
         HistoryList<String> list = new HistoryList<>();
