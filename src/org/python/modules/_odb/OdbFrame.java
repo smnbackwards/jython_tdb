@@ -2,6 +2,7 @@ package org.python.modules._odb;
 
 import org.python.core.*;
 import org.python.expose.ExposedGet;
+import org.python.expose.ExposedMethod;
 import org.python.expose.ExposedType;
 
 import java.util.Map;
@@ -39,6 +40,7 @@ public class OdbFrame extends PyObject {
         this.locals = locals;
     }
 
+    @ExposedMethod
     public PyStringMap getLocals(int timestamp){
         PyStringMap map = new PyStringMap();
         locals.map.keySet().stream().forEach(o -> map.__setitem__((String)o, locals.get(timestamp, o)));

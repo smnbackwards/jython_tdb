@@ -958,6 +958,8 @@ def mainloop(tpdb, mainpyfile):
             tpdb.redomode = True
             pass
         except Restart:
+            if not mainpyfile.endswith('_18.py') :
+                mainpyfile = mainpyfile[:-3] + '_18.py'
             print "Restarting", mainpyfile, "with arguments:"
             print "\t" + " ".join(sys.argv[1:])
         except SystemExit:

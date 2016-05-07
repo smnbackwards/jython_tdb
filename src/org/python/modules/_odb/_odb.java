@@ -18,6 +18,7 @@ public class _odb {
     protected static int currentFrameId = -1;
     protected static int currentTimestamp = 0;
     public static boolean enabled = false;
+    public static boolean replaying = false;
 
 
     public static void initializeParent(PyFrame frame){
@@ -47,6 +48,9 @@ public class _odb {
     }
 
     public static void callEvent(PyFrame frame) {
+        if(replaying){
+            return;
+        }
         HistoryMap<Object> localMap = new HistoryMap<>();
         Map<Object, PyObject> tempMap = ((PyStringMap)frame.getLocals()).getMap();
         tempMap.keySet().stream().forEach(o -> localMap.put(currentTimestamp, o, tempMap.get(o)));
@@ -71,6 +75,9 @@ public class _odb {
     }
 
     public static void returnEvent(PyFrame frame, PyObject returnValue) {
+        if(replaying){
+            return;
+        }
         if (!frames.empty()) {
             Py.maybeWrite("TTD return", parent.toString() + " at "+ currentTimestamp, LEVEL);
             eventHistory.add(new OdbEvent(currentTimestamp, frame.f_lineno, parent, OdbEvent.Type.RETURN));
@@ -84,6 +91,9 @@ public class _odb {
     }
 
     public static void lineEvent(PyFrame frame) {
+        if(replaying){
+            return;
+        }
         initializeParent(frame);
         Py.maybeWrite("TTD line", frame.f_lineno + " at "+ currentTimestamp, LEVEL);
         eventHistory.add(new OdbEvent(currentTimestamp, frame.f_lineno, parent, OdbEvent.Type.LINE));
@@ -91,7 +101,9 @@ public class _odb {
     }
 
     public static void localEvent(String index, PyObject value){
-
+        if(replaying){
+            return;
+        }
         OdbFrame frame = getCurrentFrame();
         if(frame != null) {
             Py.maybeWrite("TTD local", String.format("Set %s to %s in %s at %s", index, value, frame, currentTimestamp), LEVEL);
@@ -102,6 +114,9 @@ public class _odb {
     }
 
     public static void globalEvent(String name, PyObject value) {
+        if(replaying){
+            return;
+        }
         Py.maybeWrite("TTD", String.format("Set global %s to %s", name, value), LEVEL);
 
 //        OdbFrame frame = frames.get(0);
@@ -119,13 +134,14 @@ public class _odb {
 
 
         //TODO remove dependency on this TraceFunction class / create more generic
-        TdbTraceFunction.resetInstructionCount();
+        TdbTraceFunction.resetInstructionCount(0,0);
     }
 
     public static void setup(){
         currentTimestamp = 0;
         currentFrameId = 0;
         enabled = false;
+        replaying = true;
     }
 
     public static List<OdbEvent> getEvents() {
@@ -299,6 +315,13 @@ public class _odb {
             currentFrameId--;
             currentTimestamp = frames.get(currentFrameId).timestamp;
         }
+    }
+
+    public static void rebuildFrame(PyFrame frame, OdbFrame odbFrame){
+        Objects.requireNonNull(frame);
+        Objects.requireNonNull(odbFrame);
+        PyStringMap localsMap = odbFrame.getLocals(18);
+        frame.frame_rebuild_locals(localsMap);
     }
 
 }

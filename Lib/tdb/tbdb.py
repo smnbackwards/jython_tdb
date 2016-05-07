@@ -58,7 +58,7 @@ class Tbdb:
             # Reset the stop values to stop at instruction count 0 at any depth
             # If we are re-executing values have already been set
             self._set_stopinfo(0, -1)
-        _tdb.reset_instruction_count()
+        _tdb.reset_instruction_count(0,0)
         self.quitting = 0
 
     def trace_start(self, frame, event, arg):

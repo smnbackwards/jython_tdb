@@ -13,8 +13,8 @@ public class _tdb {
         return Py.newLong(TdbTraceFunction.getInstructionCount());
     }
 
-    public static void reset_instruction_count(){
-        TdbTraceFunction.resetInstructionCount();
+    public static void reset_instruction_count(int ic, int depth){
+        TdbTraceFunction.resetInstructionCount(ic, depth);
     }
 
     public static PyLong call_depth(){

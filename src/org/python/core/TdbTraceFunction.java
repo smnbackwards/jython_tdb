@@ -25,9 +25,9 @@ public class TdbTraceFunction extends PythonTraceFunction {
 //        System.out.println(instructionCount);
     }
 
-    public static void resetInstructionCount() {
-        instructionCount = 0;
-        callDepth = 0;
+    public static void resetInstructionCount(int ic, int callDepth) {
+        instructionCount = ic;
+        callDepth = callDepth;
         callReturnMap = new Stack<>();
         lastCallInstructionCount = 0;
         waitForMainPyFile = true;

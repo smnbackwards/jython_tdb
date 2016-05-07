@@ -4,11 +4,10 @@
  */
 package org.python.core;
 
-import org.python.expose.ExposedDelete;
-import org.python.expose.ExposedGet;
-import org.python.expose.ExposedSet;
-import org.python.expose.ExposedType;
+import org.python.expose.*;
 import org.python.modules._odb._odb;
+
+import java.util.Map;
 
 /**
  * A Python frame object.
@@ -301,6 +300,17 @@ public class PyFrame extends PyObject implements Traverseproc {
             throw Py.SystemError(String.format("no locals found when storing '%s'", value));
         }
     }
+
+    public void frame_rebuild_locals(PyStringMap map){
+        if(f_locals == null){
+            f_locals = map;
+        } else {
+            for (Map.Entry<Object, PyObject> e : map.getMap().entrySet()) {
+                setlocal((String) e.getKey(), e.getValue());
+            }
+        }
+    }
+
 
     public void setglobal(String index, PyObject value) {
         if(_odb.enabled){
