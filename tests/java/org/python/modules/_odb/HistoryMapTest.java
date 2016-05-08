@@ -13,7 +13,7 @@ public class HistoryMapTest {
 
     @Test
     public void getReturnsPutValue() throws Exception {
-        HistoryMap<String> map = new HistoryMap<>();
+        HistoryMap<String, PyObject> map = new HistoryMap<>();
 
         PyString a = new PyString("A");
         map.put(0, "a", a);
@@ -22,7 +22,7 @@ public class HistoryMapTest {
 
     @Test
     public void getBeforePutReturnsNull() throws Exception {
-        HistoryMap<String> map = new HistoryMap<>();
+        HistoryMap<String, PyObject> map = new HistoryMap<>();
 
         PyString a = new PyString("A");
         map.put(1, "a", a);
@@ -31,7 +31,7 @@ public class HistoryMapTest {
 
     @Test
     public void putReplacesValueWithSameTimestamp() throws Exception {
-        HistoryMap<String> map = new HistoryMap<>();
+        HistoryMap<String, PyObject> map = new HistoryMap<>();
 
         PyString a = new PyString("A");
         PyString b = new PyString("B");
@@ -42,7 +42,7 @@ public class HistoryMapTest {
 
     @Test
     public void getAfterTimestampReturnsLastValue() throws Exception {
-        HistoryMap<String> map = new HistoryMap<>();
+        HistoryMap<String, PyObject> map = new HistoryMap<>();
 
         PyString a = new PyString("A");
         map.put(0, "a", a);
@@ -51,7 +51,7 @@ public class HistoryMapTest {
 
     @Test
     public void getAfterTimestampReturnsLastValueMiddle() throws Exception {
-        HistoryMap<String> map = new HistoryMap<>();
+        HistoryMap<String, PyObject> map = new HistoryMap<>();
 
         PyString a = new PyString("A");
         PyString b = new PyString("B");

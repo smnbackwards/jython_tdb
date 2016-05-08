@@ -1,7 +1,6 @@
 package org.python.modules._odb;
 
 import org.python.core.PyObject;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -9,57 +8,89 @@ import java.util.stream.Collectors;
 /**
  * Created by nms12 on 4/22/2016.
  */
-public class HistoryMap<K>{
+public class HistoryMap<K, V> {
 
-    protected Map<K, LocalValueList > map = new HashMap<>();
+    protected Map<K, HistoryValueList<V>> map = new HashMap<>();
+    protected HistoryValueList<Integer> size = new HistoryValueList<>(-1, 0);
+
+    protected void changeSizeBy(int timestamp, int amount){
+        HistoryValue<Integer> value = size.getHistoryValue(timestamp);
+        if(value.getTimestamp() == timestamp){
+            value.value += amount;
+        } else {
+            size.insertValue(timestamp, value.value + amount);
+        }
+    }
 
     public int size(int timestamp) {
-        return map.size();
+        return size.getValue(timestamp);
     }
 
     public boolean isEmpty(int timestamp) {
-        return map.isEmpty();
+        return size(timestamp) == 0;
     }
 
-    public PyObject get(int timestamp, Object key) {
-        return map.get(key).getValue(timestamp);
+    public V get(int timestamp, Object key) {
+        HistoryValueList<V> list = map.get(key);
+        return list == null ? null : list.getValue(timestamp);
     }
 
-    public PyObject put(int timestamp, K key, PyObject value) {
-        if(map.containsKey(key)){
+    public V put(int timestamp, K key, V value) {
+        if (key == null || value == null) {
+            throw new NullPointerException();
+        }
+
+        if (map.containsKey(key)) {
             return map.get(key).insertValue(timestamp, value);
         } else {
-            map.put(key, new LocalValueList(timestamp, value));
+            map.put(key, new HistoryValueList<V>(timestamp, value));
+            changeSizeBy(timestamp, 1);
             return null;
         }
     }
 
-    public List<HistoryValue<PyObject>> getBefore(int timestamp, Object key) {
-        LocalValueList valueList = map.get(key);
-        if(valueList == null){
+    public List<HistoryValue<V>> getBefore(int timestamp, Object key) {
+        HistoryValueList<V> valueList = map.get(key);
+        if (valueList == null) {
             return null;
         }
         return valueList.values.stream().filter(localValue -> localValue.timestamp <= timestamp).collect(Collectors.toList());
     }
 
-    public PyObject remove(Object key) {
-        return null;
+    public void putAll(int timestamp, Map<? extends K, ? extends V> m) {
+        for (Map.Entry<? extends K, ? extends V> e : m.entrySet())
+            put(timestamp, e.getKey(), e.getValue());
     }
 
-    public void putAll(Map<? extends K, PyObject> m) {
-        throw new NotImplementedException();
+    public void clear(int timestamp) {
+        for (HistoryValueList<V> list : map.values()) {
+            list.insertValue(timestamp, null);
+        }
+        size.insertValue(timestamp, 0);
     }
 
-    public void clear() {
-        throw new NotImplementedException();
+    public boolean remove(int timestamp, Object key, Object value) {
+        return Objects.equals(remove(timestamp, key),value);
     }
 
-    public Set<K> keySet() {
-        return map.keySet();
+    public V remove(int timestamp, Object key) {
+        if (key == null) {
+            return null;
+        }
+
+        HistoryValueList<V> list = map.get(key);
+        if (list != null) {
+            V value = list.getValue(timestamp);
+            list.insertValue(timestamp, null);
+            changeSizeBy(timestamp, -1);
+            return value;
+        } else {
+            return null;
+        }
     }
 
-    public Collection<PyObject> values() {
-        throw new NotImplementedException();
+    public boolean containsKey(int timestamp, Object key){
+        HistoryValueList<V> list = map.get(key);
+        return list == null ? false : list.getValue(timestamp) != null;
     }
-
 }

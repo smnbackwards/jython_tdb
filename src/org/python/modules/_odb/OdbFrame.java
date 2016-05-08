@@ -26,10 +26,10 @@ public class OdbFrame extends PyObject {
     public String filename;
     @ExposedGet
     public int lineno;
-    public HistoryMap<Object> locals;
+    public HistoryMap<Object, PyObject> locals;
 
 
-    public OdbFrame(int timestamp, String filename, int lineno, String methodName, OdbFrame parent, HistoryMap<Object> locals) {
+    public OdbFrame(int timestamp, String filename, int lineno, String methodName, OdbFrame parent, HistoryMap<Object, PyObject> locals) {
         super(TYPE);
         this.timestamp = timestamp;
         this.filename = filename;

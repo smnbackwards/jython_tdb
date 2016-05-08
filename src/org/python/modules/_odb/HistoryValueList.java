@@ -27,6 +27,25 @@ public class HistoryValueList<V> {
         return null;
     }
 
+    public HistoryValue<V> getHistoryValue(int timestamp){
+        HistoryValue<V> value = null;
+        for (Iterator<HistoryValue<V>> it = values.iterator(); it.hasNext(); ) {
+            HistoryValue<V> tempValue = it.next();
+            if(tempValue.timestamp == timestamp){
+                return tempValue;
+            }
+            if (tempValue.timestamp < timestamp){
+                value = tempValue;
+            } else {
+                break;
+            }
+        }
+        if(value != null){
+            return value;
+        }
+        throw new IndexOutOfBoundsException("timestamp");
+    }
+
     public V getValue(int timestamp) {
         HistoryValue<V> value = null;
         for (Iterator<HistoryValue<V>> it = values.iterator(); it.hasNext(); ) {

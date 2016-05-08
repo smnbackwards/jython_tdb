@@ -29,7 +29,7 @@ public class _odb {
             assert eventHistory.isEmpty();
 
             PyFrame parentFrame = frame;
-            HistoryMap<Object> parentLocalMap = new HistoryMap<>();
+            HistoryMap<Object,PyObject> parentLocalMap = new HistoryMap<>();
             Map<Object, PyObject> tempMap = ((PyStringMap)frame.getLocals()).getMap();
             for (Object key :tempMap.keySet() ) {
                 if(!key.equals("__builtins__")){
@@ -48,7 +48,7 @@ public class _odb {
     }
 
     public static void callEvent(PyFrame frame) {
-        HistoryMap<Object> localMap = new HistoryMap<>();
+        HistoryMap<Object,PyObject> localMap = new HistoryMap<>();
         Map<Object, PyObject> tempMap = ((PyStringMap)frame.getLocals()).getMap();
         tempMap.keySet().stream().forEach(o -> localMap.put(currentTimestamp, o, tempMap.get(o)));
 
