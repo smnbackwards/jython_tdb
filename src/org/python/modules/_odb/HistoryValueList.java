@@ -56,10 +56,7 @@ public class HistoryValueList<V> {
                 break;
             }
         }
-        if(value != null){
-            return value.value;
-        }
-        throw new IndexOutOfBoundsException("timestamp");
+        return value == null ? null : value.getValue();
     }
 
     public V peekValue() {

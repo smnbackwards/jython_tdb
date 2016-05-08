@@ -38,6 +38,8 @@ public class OdbMapTest {
         suite.addTest(ConcurrentMapTests.suite(i -> new FixedTimeReplayOdbMap<>(i), "Odb Map Fixed Time Replay Tests"));
         //Timestamp increments after each operation
         suite.addTest(ConcurrentMapTests.suite(i -> new TestOdbMap<>(i), "Odb Map Replay Tests"));
+        //Adds values to the map during creation and removes them again to populate the history of the backing map
+        suite.addTest(ConcurrentMapTests.suite(i -> new TestOdbMapWithHistory(i), "Odb Map Replay Tests With History"));
         //The base tests to check that the backing list conforms to the same interface/tests
         suite.addTest(ConcurrentMapTests.suite(i -> new ConcurrentHashMap<>(i), "Concurrent Map Tests"));
         return suite;
@@ -126,6 +128,38 @@ public class OdbMapTest {
         @Override
         protected int getTimestamp() {
             return timestamp++;
+        }
+    }
+
+    static class TestOdbMapWithHistory extends TestOdbMap<String, String>{
+
+        public TestOdbMapWithHistory(int capacity, float loadFactor, int concurrencyLevel) {
+            super(capacity, loadFactor, concurrencyLevel);
+        }
+
+        public TestOdbMapWithHistory(int capacity) {
+            super(capacity);
+        }
+
+        public TestOdbMapWithHistory(Map<String, String> map) {
+            super(map);
+        }
+
+        void initializeHistory(){
+            Map<String,String> defaults = new HashMap<>();
+            defaults.put("one", "January");
+            defaults.put("two", "February");
+            defaults.put("four", "April");
+            defaults.put("five", "May");
+            putAll(defaults);
+            clear();
+            put("one", "February");
+            put("four", "4");
+            remove("one");
+
+            Iterator<Entry<String, String>> iterator = entrySet().iterator();
+            iterator.next();
+            iterator.remove();
         }
     }
 

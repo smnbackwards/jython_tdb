@@ -122,7 +122,7 @@ public class HistoryList<V> {
     }
 
     public V set(int timestamp, int index, V element) {
-        rangeCheck(timestamp - 1, index);
+        rangeCheck(timestamp, index);
         list.get(index).insertValue(timestamp, element);
         return list.get(index).getValue(timestamp - 1);
     }
