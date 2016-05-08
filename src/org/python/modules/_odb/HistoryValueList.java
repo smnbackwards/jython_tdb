@@ -40,10 +40,7 @@ public class HistoryValueList<V> {
                 break;
             }
         }
-        if(value != null){
-            return value;
-        }
-        throw new IndexOutOfBoundsException("timestamp");
+        return value == null ? null : value;
     }
 
     public V getValue(int timestamp) {

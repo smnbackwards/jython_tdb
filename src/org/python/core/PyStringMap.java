@@ -17,6 +17,8 @@ import org.python.expose.ExposedMethod;
 import org.python.expose.ExposedNew;
 import org.python.expose.ExposedType;
 import org.python.expose.MethodType;
+import org.python.modules._odb.OdbMap;
+import org.python.modules._odb._odb;
 import org.python.util.Generic;
 
 /**
@@ -32,9 +34,9 @@ public class PyStringMap extends PyObject implements Traverseproc {
      */
     private static PyType lazyType;
 
-    private final ConcurrentMap<Object, PyObject> table;
+    private final Map<Object, PyObject> table;
 
-    public ConcurrentMap<Object, PyObject> getMap() {
+    public Map<Object, PyObject> getMap() {
         return table;
     }
 
@@ -44,7 +46,9 @@ public class PyStringMap extends PyObject implements Traverseproc {
 
     public PyStringMap(int capacity) {
         super(getLazyType());
-        table = new ConcurrentHashMap<Object, PyObject>(capacity, Generic.CHM_LOAD_FACTOR,
+        table = _odb.enabled ? new OdbMap<Object, PyObject>(capacity, Generic.CHM_LOAD_FACTOR,
+                                                        Generic.CHM_CONCURRENCY_LEVEL)
+                : new ConcurrentHashMap<Object, PyObject>(capacity, Generic.CHM_LOAD_FACTOR,
                                                         Generic.CHM_CONCURRENCY_LEVEL);
     }
 

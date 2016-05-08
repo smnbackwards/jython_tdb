@@ -15,7 +15,7 @@ public class HistoryMap<K, V> {
 
     protected void changeSizeBy(int timestamp, int amount){
         HistoryValue<Integer> value = size.getHistoryValue(timestamp);
-        if(value.getTimestamp() == timestamp){
+        if(value != null && value.getTimestamp() == timestamp){
             value.value += amount;
         } else {
             size.insertValue(timestamp, value.value + amount);
