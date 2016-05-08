@@ -16,6 +16,11 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
     protected ConcurrentMap<K, V> map;
     protected HistoryMap<K, V> historyMap;
 
+    volatile Set<Map.Entry<K, V>> entrySet;
+    volatile Set<K> keySet;
+    volatile Collection<V> values;
+
+
     public OdbMap(int capacity, float loadFactor, int concurrencyLevel) {
         map = new ConcurrentHashMap<>(capacity, loadFactor, concurrencyLevel);
         historyMap = new HistoryMap<>();
@@ -33,20 +38,20 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
 
     @Override
     public String toString() {
-        Iterator<Map.Entry<K,V>> i = entrySet().iterator();
-        if (! i.hasNext())
+        Iterator<Map.Entry<K, V>> i = entrySet().iterator();
+        if (!i.hasNext())
             return "{}";
 
         StringBuilder sb = new StringBuilder();
         sb.append('{');
-        for (;;) {
-            Map.Entry<K,V> e = i.next();
+        for (; ; ) {
+            Map.Entry<K, V> e = i.next();
             K key = e.getKey();
             V value = e.getValue();
-            sb.append(key   == this ? "(this Map)" : key);
+            sb.append(key == this ? "(this Map)" : key);
             sb.append('=');
             sb.append(value == this ? "(this Map)" : value);
-            if (! i.hasNext())
+            if (!i.hasNext())
                 return sb.append('}').toString();
             sb.append(',').append(' ');
         }
@@ -76,8 +81,9 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
 
     @Override
     public void forEach(BiConsumer<? super K, ? super V> action) {
-        map.forEach(action);
-        //TODO
+        throw new UnsupportedOperationException();
+//        map.forEach(action);
+//        historyMap.putAll(getTimestamp(), map);
     }
 
     @Override
@@ -103,7 +109,7 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
 
     @Override
     public V replace(K key, V value) {
-        if(historyMap.containsKey(getTimestamp(), key)){
+        if (historyMap.containsKey(getTimestamp(), key)) {
             historyMap.put(getTimestamp(), key, value);
         }
         return map.replace(key, value);
@@ -111,8 +117,9 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
 
     @Override
     public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
-        //TODO
-        map.replaceAll(function);
+        throw new UnsupportedOperationException();
+//        map.replaceAll(function);
+//        historyMap.putAll(getTimestamp(), map);
     }
 
 
@@ -147,7 +154,7 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
 
     @Override
     public boolean isEmpty() {
-        if(isReplaying()){
+        if (isReplaying()) {
             return historyMap.isEmpty(getTimestamp());
         }
         return map.isEmpty();
@@ -155,7 +162,7 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
 
     @Override
     public boolean containsKey(Object key) {
-        if(isReplaying()){
+        if (isReplaying()) {
             return historyMap.containsKey(getTimestamp(), key);
         }
         return map.containsKey(key);
@@ -165,8 +172,8 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
     public boolean containsValue(Object value) {
         if (isReplaying()) {
             Collection<V> values = values();
-            for (V v : values){
-                if(Objects.equals(v, value)){
+            for (V v : values) {
+                if (Objects.equals(v, value)) {
                     return true;
                 }
             }
@@ -211,7 +218,8 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
     @Override
     public Set<K> keySet() {
         if (isReplaying()) {
-            return new KeySet();
+            Set<K> ks;
+            return (ks = keySet) != null ? ks : (keySet = new KeySet());
         }
         return map.keySet();
     }
@@ -219,16 +227,17 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
     @Override
     public Collection<V> values() {
         if (isReplaying()) {
-            return new ValueSet();
+            Collection<V> vs;
+            return (vs = values) != null ? vs : (values = new ValueSet());
         }
         return map.values();
     }
 
-
     @Override
     public Set<Entry<K, V>> entrySet() {
         if (isReplaying()) {
-            return new EntrySet();
+            Set<Map.Entry<K, V>> es;
+            return (es = entrySet) != null ? es : (entrySet = new EntrySet());
         }
         return map.entrySet();
     }
@@ -259,7 +268,13 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
 
     @Override
     public int hashCode() {
-        //TODO
+        if (isReplaying()) {
+            int h = 0;
+            Iterator<Entry<K, V>> i = entrySet().iterator();
+            while (i.hasNext())
+                h += i.next().hashCode();
+            return h;
+        }
         return map.hashCode();
     }
 
@@ -274,7 +289,7 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
 
         @Override
         public void clear() {
-            OdbMap.this.historyMap.clear(getTimestamp());
+            OdbMap.this.clear();
         }
 
     }
@@ -289,6 +304,11 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
         public int size() {
             return OdbMap.this.size();
         }
+
+        @Override
+        public void clear() {
+            OdbMap.this.clear();
+        }
     }
 
     final class ValueSet extends AbstractCollection<V> {
@@ -302,21 +322,27 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
         public int size() {
             return OdbMap.this.size();
         }
+
+        @Override
+        public void clear() {
+            OdbMap.this.clear();
+        }
     }
 
     abstract class MapIterator {
         protected Map.Entry<K, HistoryValueList<V>> nextValue = null;
         protected Iterator<Map.Entry<K, HistoryValueList<V>>> listIterator;
+        protected Map.Entry<K, V> lastReturnEntry = null;
 
         MapIterator() {
             listIterator = OdbMap.this.historyMap.map.entrySet().iterator();
             setNextValue();
         }
 
-        public void setNextValue(){
-            while(listIterator.hasNext()){
-                Entry<K,HistoryValueList<V>> tempValue = listIterator.next();
-                if(tempValue.getValue().getValue(getTimestamp()) != null){
+        public void setNextValue() {
+            while (listIterator.hasNext()) {
+                Entry<K, HistoryValueList<V>> tempValue = listIterator.next();
+                if (tempValue.getValue().getValue(getTimestamp()) != null) {
                     nextValue = tempValue;
                     return;
                 }
@@ -324,86 +350,22 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
             nextValue = null;
         }
 
-        public boolean hasNextEntry() {
+        public final boolean hasNext() {
             return nextValue != null;
         }
 
-        public Map.Entry<K, V> nextEntry() {
-            if (!hasNextEntry()) {
+        protected Map.Entry<K, V> nextEntry() {
+            if (!hasNext()) {
                 throw new NoSuchElementException();
             }
-            Map.Entry<K, V> value = new AbstractMap.SimpleImmutableEntry<K, V>
+            lastReturnEntry = new AbstractMap.SimpleImmutableEntry<>
                     (nextValue.getKey(), nextValue.getValue().getValue(getTimestamp()));
 
             setNextValue();
-            return value;
-        }
-    }
-
-    final class EntryIterator extends MapIterator implements Iterator<Entry<K, V>> {
-        Entry<K, V> lastReturn = null;
-
-        @Override
-        public boolean hasNext() {
-            return hasNextEntry();
+            return lastReturnEntry;
         }
 
-        @Override
-        public Map.Entry<K, V> next() {
-            return lastReturn = super.nextEntry();
-        }
-
-        @Override
-        public void remove() {
-            if (lastReturn == null) {
-                throw new IllegalStateException();
-            }
-
-            //remove from both lists!
-            OdbMap.this.remove(lastReturn.getKey());
-            lastReturn = null;
-        }
-    }
-
-    final class KeyIterator extends MapIterator implements Iterator<K>{
-        K lastReturn = null;
-        @Override
-        public boolean hasNext() {
-            return hasNextEntry();
-        }
-
-        @Override
-        public K next() {
-            return lastReturn = super.nextEntry().getKey();
-        }
-
-        @Override
-        public void remove() {
-            if (lastReturn == null) {
-                throw new IllegalStateException();
-            }
-
-            //remove from both lists!
-            OdbMap.this.remove(lastReturn);
-            lastReturn = null;
-        }
-    }
-
-    final class ValueIterator extends MapIterator implements Iterator<V> {
-        Entry<K,V> lastReturnEntry = null;
-        @Override
-        public boolean hasNext() {
-            return hasNextEntry();
-        }
-
-        @Override
-        public V next() {
-            lastReturnEntry = nextEntry();
-            return lastReturnEntry.getValue();
-        }
-
-        @Override
-        public void remove() {
+        public final void remove() {
             if (lastReturnEntry == null) {
                 throw new IllegalStateException();
             }
@@ -411,6 +373,27 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
             //remove from both lists!
             OdbMap.this.remove(lastReturnEntry.getKey());
             lastReturnEntry = null;
+        }
+    }
+
+    final class EntryIterator extends MapIterator implements Iterator<Entry<K, V>> {
+        @Override
+        public Entry<K, V> next() {
+            return super.nextEntry();
+        }
+    }
+
+    final class KeyIterator extends MapIterator implements Iterator<K> {
+        @Override
+        public K next() {
+            return super.nextEntry().getKey();
+        }
+    }
+
+    final class ValueIterator extends MapIterator implements Iterator<V> {
+        @Override
+        public V next() {
+            return super.nextEntry().getValue();
         }
     }
 }
