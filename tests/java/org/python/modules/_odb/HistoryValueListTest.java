@@ -3,33 +3,33 @@ package org.python.modules._odb;
 import org.junit.Test;
 import org.python.core.PyString;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 /**
- * Created by nms12 on 4/25/2016.
+ * Created by nms12 on 5/8/2016.
  */
-public class LocalValueListTest {
-
+public class HistoryValueListTest {
     @Test
     public void testConstructor() throws Exception {
-        PyString a = new PyString("a");
-        LocalValueList l = new LocalValueList(0, a);
+        String a = "a";
+        HistoryValueList<String> l = new HistoryValueList<>(0,a);
         assertEquals(a, l.getValue(0));
     }
 
     @Test
     public void testGetAfterTimestamp() throws Exception {
-        PyString a = new PyString("a");
-        LocalValueList l = new LocalValueList(0, a);
+        String a = "a";
+        HistoryValueList<String> l = new HistoryValueList<String>(0, a);
         assertEquals(a, l.getValue(10));
     }
 
     @Test
     public void testGetConsecutiveValues() throws Exception {
-        PyString a = new PyString("a");
-        PyString b = new PyString("b");
-        PyString c = new PyString("c");
-        LocalValueList l = new LocalValueList(0, a);
+        String a = "a";
+        String b = "b";
+        String c = "c";
+        HistoryValueList<String> l = new HistoryValueList<String>(0, a);
         l.insertValue(1, b);
         l.insertValue(2, c);
         assertNull(l.getValue(-1));
@@ -42,10 +42,10 @@ public class LocalValueListTest {
 
     @Test
     public void testGetNonConsecutiveValues() throws Exception {
-        PyString a = new PyString("a");
-        PyString b = new PyString("b");
-        PyString c = new PyString("c");
-        LocalValueList l = new LocalValueList(0, a);
+        String a = "a";
+        String b = "b";
+        String c = "c";
+        HistoryValueList<String> l = new HistoryValueList<String>(0, a);
         l.insertValue(2, b);
         l.insertValue(5, c);
         assertNull(l.getValue(-1));
@@ -58,20 +58,20 @@ public class LocalValueListTest {
         assertEquals(c, l.getValue(6));
         assertEquals(c, l.getValue(7));
     }
-    
+
     @Test
     public void testReplaceValue() throws Exception {
-        PyString a = new PyString("a");
-        PyString b0 = new PyString("b");
-        LocalValueList l = new LocalValueList(0, a);
+        String a = "a";
+        String b0 = "b";
+        HistoryValueList<String> l = new HistoryValueList<String>(0, a);
         l.insertValue(0, b0);
         assertEquals(b0, l.getValue(0));
     }
 
     @Test
     public void testGetBeforeValueExistsReturnsNull() throws Exception {
-        PyString a = new PyString("a");
-        LocalValueList l = new LocalValueList(1, a);
+        String a = "a";
+        HistoryValueList<String> l = new HistoryValueList<String>(1, a);
         assertNull(l.getValue(0));
     }
 }

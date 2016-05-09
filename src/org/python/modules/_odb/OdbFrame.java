@@ -27,10 +27,10 @@ public class OdbFrame extends PyObject {
     public String filename;
     @ExposedGet
     public int lineno;
-    public HistoryMap<Object> locals;
+    public HistoryMap<Object, PyObject> locals;
 
 
-    public OdbFrame(int timestamp, String filename, int lineno, String methodName, OdbFrame parent, HistoryMap<Object> locals) {
+    public OdbFrame(int timestamp, String filename, int lineno, String methodName, OdbFrame parent, HistoryMap<Object, PyObject> locals) {
         super(TYPE);
         this.timestamp = timestamp;
         this.filename = filename;
@@ -43,7 +43,12 @@ public class OdbFrame extends PyObject {
     @ExposedMethod
     public PyStringMap getLocals(int timestamp){
         PyStringMap map = new PyStringMap();
-        locals.map.keySet().stream().forEach(o -> map.__setitem__((String)o, locals.get(timestamp, o)));
+        for( Map.Entry<Object, HistoryValueList<PyObject>> e : locals.map.entrySet()){
+            HistoryValue<PyObject> value = e.getValue().getHistoryValue(timestamp);
+            if(value != null && value.getValue() != null){
+                map.__setitem__((String)e.getKey(), value.getValue());
+            }
+        }
         return map;
     }
 }

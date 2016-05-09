@@ -153,6 +153,7 @@ oracle.jar=C:/workspace/HEAD/for_development/bisdevsrv28/jboss/server/infra/lib/
             <pathelement path="${extlibs.dir}/asm-commons-5.0.3.jar" />
             <pathelement path="${extlibs.dir}/asm-util-5.0.3.jar" />
             <pathelement path="${extlibs.dir}/guava-18.0.jar" />
+            <pathelement path="${extlibs.dir}/guava-testlib-18.0.jar" />
             <pathelement path="${extlibs.dir}/icu4j-54_1_1.jar" />
             <pathelement path="${extlibs.dir}/jffi-arm-Linux.jar"/>
             <pathelement path="${extlibs.dir}/jffi-Darwin.jar"/>
@@ -916,6 +917,19 @@ The readme text for the next release will be like:
     <target name="test" depends="prepare-test,javatest,launchertest,regrtest,modjytest" description="run all the tests"/>
     <target name="singlejavatest" depends="compile,expose" description="run a single JUnit test (specify with -Dtest=classname)">
         <junit haltonfailure="true" fork="true">
+            <formatter type="brief" usefile="false"/>
+            <sysproperty key="python.cachedir.skip" value="true"/>
+            <sysproperty key="python.home" value="${dist.dir}"/>
+            <classpath refid="test.classpath"/>
+            <batchtest>
+                <fileset dir="${test.source.dir}" includes="**/${test}.java"/>
+            </batchtest>
+        </junit>
+    </target>
+    <target name="singlejavatestdebug" depends="compile,expose" description="run a single JUnit test (specify with -Dtest=classname)">
+        <junit haltonfailure="true" fork="true" forkmode="once">
+            <jvmarg value="-Xdebug"/>
+            <jvmarg value="-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5006"/>
             <formatter type="brief" usefile="false"/>
             <sysproperty key="python.cachedir.skip" value="true"/>
             <sysproperty key="python.home" value="${dist.dir}"/>

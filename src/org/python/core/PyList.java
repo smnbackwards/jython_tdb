@@ -8,6 +8,8 @@ import org.python.expose.ExposedMethod;
 import org.python.expose.ExposedNew;
 import org.python.expose.ExposedType;
 import org.python.expose.MethodType;
+import org.python.modules._odb.OdbList;
+import org.python.modules._odb._odb;
 import org.python.util.Generic;
 
 import java.util.Collection;
@@ -40,29 +42,18 @@ public class PyList extends PySequenceList implements List {
 
     public PyList(PyType type) {
         super(type);
-        list = Generic.list();
-    }
-
-    private PyList(List list, boolean convert) {
-        super(TYPE);
-        if (!convert) {
-            this.list = list;
-        } else {
-            this.list = Generic.list();
-            for (Object o : list) {
-                add(o);
-            }
-        }
+        list = _odb.enabled ? new OdbList<>() : new ArrayList<>();
     }
 
     public PyList(PyType type, PyObject[] elements) {
         super(type);
-        list = new ArrayList<PyObject>(Arrays.asList(elements));
+        list = _odb.enabled ? new OdbList<>(Arrays.asList(elements))
+                : new ArrayList<>(Arrays.asList(elements));
     }
 
     public PyList(PyType type, Collection c) {
         super(type);
-        list = new ArrayList<PyObject>(c.size());
+        list = _odb.enabled ? new OdbList<>() : new ArrayList<>();
         for (Object o : c) {
             add(o);
         }
@@ -84,7 +75,7 @@ public class PyList extends PySequenceList implements List {
     }
 
     public static PyList fromList(List<PyObject> list) {
-        return new PyList(list, false);
+        return new PyList(list);
     }
 
     List<PyObject> getList() {
@@ -92,7 +83,7 @@ public class PyList extends PySequenceList implements List {
     }
 
     private static List<PyObject> listify(Iterator<PyObject> iter) {
-        List<PyObject> list = Generic.list();
+        List<PyObject> list = new OdbList<>();
         while (iter.hasNext()) {
             list.add(iter.next());
         }

@@ -8,6 +8,8 @@ import org.python.expose.MethodType;
 
 import org.python.core.finalization.FinalizablePyObject;
 import org.python.core.finalization.FinalizeTrigger;
+import org.python.modules._odb.HistoryMap;
+import org.python.modules._odb._odb;
 
 /**
  * An instance of a classic Python class.
@@ -26,6 +28,7 @@ public class PyInstance extends PyObject implements FinalizablePyObject, Travers
      * The namespace of this instance.  Contains all instance attributes.
      */
     public PyObject __dict__;
+    public HistoryMap<Object,PyObject> historyMap;
 
     public PyInstance() {
         super(TYPE);
@@ -174,6 +177,10 @@ public class PyInstance extends PyObject implements FinalizablePyObject, Travers
         }
         if (__dict__ == null) return null;
 
+        if(_odb.replaying && historyMap != null){
+            return historyMap.get(_odb.getCurrentTimestamp(), name);
+        }
+
         return __dict__.__finditem__(name);
     }
 
@@ -303,6 +310,17 @@ public class PyInstance extends PyObject implements FinalizablePyObject, Travers
             setter.__call__(this, new PyString(name), value);
         } else {
             __dict__.__setitem__(name, value);
+            // if history map is null make new history map
+            if (_odb.enabled) {
+                if (historyMap == null) {
+                    historyMap = new HistoryMap<>();
+                }
+
+                Py.maybeWrite("TTD field", "Setting " + name + " to " + value, Py.WARNING);
+                historyMap.put(_odb.getCurrentTimestamp(), name, value);
+
+            }
+
         }
         if (name == "__del__" && !JyAttribute.hasAttr(this, JyAttribute.FINALIZE_TRIGGER_ATTR)) {
             FinalizeTrigger.ensureFinalizer(this);

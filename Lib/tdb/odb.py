@@ -122,7 +122,7 @@ class Odb(cmd.Cmd):
         values = _odb.getLocalHistory(arg)
         if values:
             for v in values:
-                print '<%s> %s' % (v.timestamp, v.value)
+                print v
 
     def do_args(self, arg):
         '''
