@@ -14,50 +14,50 @@ public class _odb {
     protected static Stack<OdbFrame> frames = new Stack<>();
     protected static LinkedList<OdbEvent> eventHistory = new LinkedList<>();
     protected static OdbFrame parent = null;
+    protected static HistoryMap<Object,PyObject> globals = null;
 
     protected static int currentFrameId = -1;
     public static int currentTimestamp = 0;
     public static boolean enabled = false;
     public static boolean replaying = false;
 
+    public static PyStringMap initializeGlobals(PyStringMap map){
+        //PyStringMap is not exposed to python in Jython
+        //So we include this helper function to call the enableLogging method on it
+        map.enableLogging();
+        return map;
+    }
 
     public static void initializeParent(PyFrame frame){
         if(parent == null){
-            //TODO -ea isn't enabled!!!
             assert currentTimestamp == 0;
             assert frames.isEmpty();
             assert eventHistory.isEmpty();
 
             PyFrame parentFrame = frame;
-            HistoryMap<Object,PyObject> parentLocalMap = new HistoryMap<>();
-            Map<Object, PyObject> tempMap = ((PyStringMap)frame.getLocals()).getMap();
-            for (Object key :tempMap.keySet() ) {
-                if(!key.equals("__builtins__")){
-                    parentLocalMap.put(-1, key, tempMap.get(key));
-                }
-            }
+
+            assert frame.f_globals instanceof PyStringMap;
+            assert frame.f_globals == frame.f_locals;
+
+            Map<Object, PyObject> tempMap = ((PyStringMap)frame.f_globals).getMap();
+            globals = ((OdbMap<Object, PyObject>) tempMap).historyMap;
+
             parent = new OdbFrame(0, //Flag to say this is the enclosing frame
                     parentFrame.f_code.co_filename,
                     parentFrame.f_back.f_lineno,
                     parentFrame.f_code.co_name,
                     null,
-                    parentLocalMap);
+                    globals);
             frames.push(parent);
             currentFrameId++;
         }
     }
 
     public static void callEvent(PyFrame frame) {
-        HistoryMap<Object,PyObject> localMap;
-        Map<Object, PyObject> tempMap = ((PyStringMap)frame.getLocals()).getMap();
-        if(tempMap instanceof OdbMap){
-            OdbMap<Object, PyObject> map = (OdbMap<Object, PyObject>) tempMap;
-            localMap = map.historyMap;
-        } else {
-            Py.writeWarning("Odb","locals map of frame was not backed by an OdbMap");
-            localMap = new HistoryMap<>();
-            tempMap.keySet().stream().forEach(o -> localMap.put(currentTimestamp, o, tempMap.get(o)));
-        }
+        //This event is called from code being debugged
+        //which means logging should be enabled
+        //so the locals dictionary is backed by an OdbMap
+        HistoryMap<Object, PyObject> localMap = ((OdbMap<Object, PyObject>) ((PyStringMap) frame.getLocals()).getMap()).historyMap;
 
         initializeParent(frame.f_back);
 
@@ -96,15 +96,6 @@ public class _odb {
         Py.maybeWrite("TTD line", frame.f_lineno + " at "+ currentTimestamp, LEVEL);
         eventHistory.add(new OdbEvent(currentTimestamp, frame.f_lineno, parent, OdbEvent.Type.LINE));
         currentTimestamp++;
-    }
-
-    public static void globalEvent(String name, PyObject value) {
-        Py.maybeWrite("TTD", String.format("Set global %s to %s", name, value), LEVEL);
-
-//        OdbFrame frame = frames.get(0);
-//        if(frame != null){
-//            frame.locals.put(currentTimestamp, name, value);
-//        }
     }
 
     public static void reset(){
@@ -152,15 +143,21 @@ public class _odb {
     }
 
     public static PyStringMap getCurrentLocals(){
+        if(getCurrentFrame().locals == globals){
+            return getGlobals();
+        }
         return getCurrentFrame().getLocals(currentTimestamp);
     }
 
-    public static PyObject lookupLocal(String key){
-        return getCurrentFrame().locals.get(currentTimestamp, key);
-    }
-
-    public static PyObject lookupLocalField(String local, String field){
-        return ((PyInstance)lookupLocal(local)).historyMap.get(currentTimestamp, field);
+    public static PyStringMap getGlobals(){
+        PyStringMap map = new PyStringMap();
+        for( Map.Entry<Object, HistoryValueList<PyObject>> e : globals.map.entrySet()){
+            HistoryValue<PyObject> value = e.getValue().getHistoryValue(currentTimestamp);
+            if(value != null && value.getValue() != null && !e.getKey().equals("__builtins__")){
+                map.__setitem__((String)e.getKey(), value.getValue());
+            }
+        }
+        return map;
     }
 
     public static List<HistoryValue<PyObject>> getLocalHistory(String key) {

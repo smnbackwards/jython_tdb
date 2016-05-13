@@ -79,7 +79,7 @@ class Odb(cmd.Cmd):
                 sys.stdin = self.stdin
                 sys.stdout = self.stdout
                 sys.displayhook = self.displayhook
-                exec code in globals(), locals()
+                exec code in _odb.getGlobals(), _odb.getCurrentLocals()
             finally:
                 sys.stdout = save_stdout
                 sys.stdin = save_stdin
@@ -140,6 +140,12 @@ class Odb(cmd.Cmd):
         Lists the local variables of the current frame
         '''
         print _odb.getCurrentLocals()
+
+    def do_globals(self, arg):
+        '''
+        Lists the global variables
+        '''
+        print _odb.getGlobals()
 
     def do_list(self, arg):
         '''
@@ -410,8 +416,7 @@ class Odb(cmd.Cmd):
         # self._user_requested_quit = 0
         cmd = 'execfile(%r)' % filename
 
-        import __main__
-        globals = __main__.__dict__
+        globals = _odb.initializeGlobals( __main__.__dict__)
         locals = globals
 
         _odb.reset()

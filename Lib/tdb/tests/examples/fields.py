@@ -13,3 +13,5 @@ c.int = 2
 c.object = c
 c.string = c.field
 c.field = "a new string in the field"
+
+c = C()

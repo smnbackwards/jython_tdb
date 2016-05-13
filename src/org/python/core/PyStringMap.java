@@ -34,10 +34,16 @@ public class PyStringMap extends PyObject implements Traverseproc {
      */
     private static PyType lazyType;
 
-    private final Map<Object, PyObject> table;
+    private Map<Object, PyObject> table;
 
     public Map<Object, PyObject> getMap() {
         return table;
+    }
+
+    public void enableLogging(){
+        if(!(table instanceof OdbMap)){
+            table = new OdbMap<>(table);
+        }
     }
 
     public PyStringMap() {
@@ -46,10 +52,8 @@ public class PyStringMap extends PyObject implements Traverseproc {
 
     public PyStringMap(int capacity) {
         super(getLazyType());
-        table = _odb.enabled ? new OdbMap<Object, PyObject>(capacity, Generic.CHM_LOAD_FACTOR,
-                                                        Generic.CHM_CONCURRENCY_LEVEL)
-                : new ConcurrentHashMap<Object, PyObject>(capacity, Generic.CHM_LOAD_FACTOR,
-                                                        Generic.CHM_CONCURRENCY_LEVEL);
+        table = _odb.enabled ? new OdbMap<>(capacity, Generic.CHM_LOAD_FACTOR, Generic.CHM_CONCURRENCY_LEVEL)
+                : new ConcurrentHashMap<>(capacity, Generic.CHM_LOAD_FACTOR, Generic.CHM_CONCURRENCY_LEVEL);
     }
 
     public PyStringMap(Map<Object, PyObject> map) {

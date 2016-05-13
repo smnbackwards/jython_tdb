@@ -17,7 +17,7 @@ def cycle_length(n):
 def cycle():
     m = 0
     n = 0
-    for d in xrange(1, 2000):
+    for d in xrange(1, 1000):
         c = cycle_length(d)
         if c > m:
             m = c
