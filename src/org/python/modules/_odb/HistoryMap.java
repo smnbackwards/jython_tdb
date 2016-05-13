@@ -1,7 +1,5 @@
 package org.python.modules._odb;
 
-import org.python.core.PyObject;
-
 import java.util.*;
 import java.util.stream.Collectors;
 

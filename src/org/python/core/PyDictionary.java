@@ -4,14 +4,8 @@
  */
 package org.python.core;
 
-import java.util.AbstractSet;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -20,6 +14,8 @@ import org.python.expose.ExposedMethod;
 import org.python.expose.ExposedNew;
 import org.python.expose.ExposedType;
 import org.python.expose.MethodType;
+import org.python.modules._odb.OdbMap;
+import org.python.modules._odb._odb;
 import org.python.util.Generic;
 
 
@@ -35,9 +31,9 @@ public class PyDictionary extends PyObject implements ConcurrentMap, Traversepro
         TYPE.object___setattr__("__hash__", Py.None);
     }
 
-    private final ConcurrentMap<PyObject, PyObject> internalMap;
+    private final Map<PyObject, PyObject> internalMap;
 
-    public ConcurrentMap<PyObject, PyObject> getMap() {
+    public Map<PyObject, PyObject> getMap() {
         return internalMap;
     }
 
@@ -53,8 +49,8 @@ public class PyDictionary extends PyObject implements ConcurrentMap, Traversepro
      */
     public PyDictionary(PyType type, int capacity) {
         super(type);
-        internalMap = new ConcurrentHashMap<PyObject,PyObject>(capacity, Generic.CHM_LOAD_FACTOR,
-                                                               Generic.CHM_CONCURRENCY_LEVEL);
+        internalMap = _odb.enabled ? new OdbMap<>(capacity, Generic.CHM_LOAD_FACTOR, Generic.CHM_CONCURRENCY_LEVEL)
+                : new ConcurrentHashMap<>(capacity, Generic.CHM_LOAD_FACTOR, Generic.CHM_CONCURRENCY_LEVEL);
     }
 
     /**
@@ -62,7 +58,7 @@ public class PyDictionary extends PyObject implements ConcurrentMap, Traversepro
      */
     public PyDictionary(PyType type) {
         super(type);
-        internalMap = Generic.concurrentMap();
+        internalMap = _odb.enabled ? new OdbMap<>() : Generic.concurrentMap();
     }
 
     /**
@@ -74,12 +70,12 @@ public class PyDictionary extends PyObject implements ConcurrentMap, Traversepro
 
     public PyDictionary(ConcurrentMap<PyObject, PyObject> backingMap, boolean useBackingMap) {
         super(TYPE);
-        internalMap = backingMap;
+        internalMap = !_odb.enabled ? backingMap : new OdbMap<>(backingMap);
     }
 
     public PyDictionary(PyType type, ConcurrentMap<PyObject, PyObject> backingMap, boolean useBackingMap) {
         super(type);
-        internalMap = backingMap;
+        internalMap = !_odb.enabled ? backingMap : new OdbMap<>(backingMap);
     }
 
     /**
@@ -114,7 +110,7 @@ public class PyDictionary extends PyObject implements ConcurrentMap, Traversepro
      */
     public PyDictionary(PyObject elements[]) {
         this();
-        ConcurrentMap<PyObject, PyObject> map = getMap();
+        Map<PyObject, PyObject> map = getMap();
         for (int i = 0; i < elements.length; i += 2) {
             map.put(elements[i], elements[i + 1]);
         }

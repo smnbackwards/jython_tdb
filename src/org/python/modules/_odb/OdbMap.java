@@ -1,5 +1,6 @@
 package org.python.modules._odb;
 
+import org.python.core.Py;
 import org.python.util.Generic;
 
 import java.util.*;
@@ -28,6 +29,10 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
 
     public OdbMap(int capacity) {
         this(capacity, Generic.CHM_LOAD_FACTOR, Generic.CHM_CONCURRENCY_LEVEL);
+    }
+
+    public OdbMap(){
+        this(Generic.CHM_INITIAL_CAPACITY);
     }
 
     public OdbMap(Map<K, V> map) {
