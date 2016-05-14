@@ -31,7 +31,7 @@ class DictTestCase(unittest.TestCase):
         for f in actions:
             returnValue = f(reference_list)
             self.assertEqual(returnValue, returnValues[_odb.currentTimestamp - 1])
-            self.assertDictEqual(reference_list, history_list)
+            self.assertEqual(reference_list, history_list)
             _odb.currentTimestamp += 1
 
         _odb.replaying = 0
@@ -86,6 +86,27 @@ class DictTestCase(unittest.TestCase):
             (lambda d: d.__setitem__('key','after clear')),
         ], {'one':'jan', 'two':'feb', 'three':'mar'})
 
+    def test_delete_manual(self):
+        _odb.enabled = 1
+        _odb.currentTimestamp = 0
+        d = dict({})
+
+        _odb.currentTimestamp = 1
+        d.__setitem__('key','value') ; _odb.currentTimestamp = 2
+        d.__setitem__('key','newvalue'); _odb.currentTimestamp = 3
+        d.__delitem__('key') ; _odb.currentTimestamp = 4
+        d.__setitem__('key','after del') ; _odb.currentTimestamp+= 5
+
+        _odb.enabled = 0
+        _odb.replaying = 1
+
+        _odb.currentTimestamp = 0 ; self.assertEqual({}, d)
+        _odb.currentTimestamp = 1 ; self.assertEqual({'key':'value'}, d)
+        _odb.currentTimestamp = 2 ; self.assertEqual({'key':'newvalue'}, d)
+        _odb.currentTimestamp = 3 ; self.assertEqual({}, d)
+        _odb.currentTimestamp = 4 ; self.assertEqual({'key':'after del'}, d)
+
+        _odb.replaying = 0
 
 def test_main():
     test_support.verbose = 1

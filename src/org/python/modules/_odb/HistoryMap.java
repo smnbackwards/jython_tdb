@@ -39,7 +39,13 @@ public class HistoryMap<K, V> {
         }
 
         if (map.containsKey(key)) {
-            return map.get(key).insertValue(timestamp, value);
+
+            HistoryValueList<V> historyValueList = map.get(key);
+
+            if(historyValueList.peekValue() == null){
+                changeSizeBy(timestamp, 1);
+            }
+            return historyValueList.insertValue(timestamp, value);
         } else {
             map.put(key, new HistoryValueList<V>(timestamp, value));
             changeSizeBy(timestamp, 1);
