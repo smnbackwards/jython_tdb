@@ -1,12 +1,9 @@
 import sys
 import unittest
 import fibexecutionmodel
+import os
 from tdb import odb
 from test import test_support
-
-class NullDevice():
-    def write(self, s):
-        pass
 
 
 class _GeneratorInput:
@@ -28,12 +25,13 @@ class TestGeneratorInput(object):
         self.real_stdout = sys.stdout
         self.generator_input = _GeneratorInput()
         sys.stdin = self.generator_input
-        # sys.stdout = NullDevice()
+        sys.stdout = open(os.devnull, 'w')
         return self
 
     def __exit__(self, *exc):
         sys.stdin = self.real_stdin
         sys.stdout = self.real_stdout
+
 
 class OdbFibFrameModelTestCase(unittest.TestCase):
     fib = 'examples/fib.py'
@@ -44,9 +42,10 @@ class OdbFibFrameModelTestCase(unittest.TestCase):
             test_input.initialize_generator(commands_and_asserts_generator(debugger))
             debugger.run(self.fib)
 
-    #region model based tests
+    # region model based tests
     class OdbExecutionModel():
-        def __init__(self, frame_id, up_frame_timestamp, down_frame_timestamp, next_frame_timestamp, prev_frame_timestamp):
+        def __init__(self, frame_id, up_frame_timestamp, down_frame_timestamp, next_frame_timestamp,
+                     prev_frame_timestamp):
             self.frame_id = frame_id
             self.up_frame_timestamp = up_frame_timestamp
             self.down_frame_timestamp = down_frame_timestamp
@@ -109,9 +108,10 @@ class OdbFibFrameModelTestCase(unittest.TestCase):
         self.assertEqual(expected_timestamp, actual_timestamp)
         self.assertEqual(actual_frame_id, expected_frame_id)
 
-    #endregion
+        # endregion
 
-#region Test Generation
+
+# region Test Generation
 def create_test_jump(i):
     def _test_jump(self):
         def control_function(debugger):
@@ -123,6 +123,7 @@ def create_test_jump(i):
         self._test_fib(control_function)
 
     return _test_jump
+
 
 def create_test_up(i):
     def _test_up(self):
@@ -155,6 +156,7 @@ def create_test_down(i):
 
     return _test_down
 
+
 def create_test_next(i):
     def _test_next(self):
         def control_function(debugger):
@@ -169,6 +171,7 @@ def create_test_next(i):
         self._test_fib(control_function)
 
     return _test_next
+
 
 def create_test_prev(i):
     def _test_prev(self):
@@ -193,12 +196,14 @@ def generate_test(i, method, test_name):
 
 
 for i in range(len(OdbFibFrameModelTestCase.model)):
-    generate_test(i, create_test_jump, 'test_jump_%s'%i)
+    generate_test(i, create_test_jump, 'test_jump_%s' % i)
     generate_test(i, create_test_up, 'test_up_%s' % i)
     generate_test(i, create_test_down, 'test_down_%s' % i)
     generate_test(i, create_test_next, 'test_next_%s' % i)
     generate_test(i, create_test_prev, 'test_prev_%s' % i)
-#endregion
+
+
+# endregion
 
 class OdbFibModelTestCase(unittest.TestCase):
     def _test_fib(self, commands_and_asserts_generator):
@@ -210,6 +215,7 @@ class OdbFibModelTestCase(unittest.TestCase):
 
 
 fibexecutionmodel.generate_tests(OdbFibModelTestCase)
+
 
 def test_main():
     # test_support.verbose = 1
