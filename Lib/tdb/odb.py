@@ -431,6 +431,8 @@ class Odb(cmd.Cmd):
         print "Program has finished, now entering ODB mode"
         _odb.setup()
         self.control_loop()
+        _odb.reset()
+        _odb.cleanupGlobals(__main__.__dict__)
 
 
 def main():

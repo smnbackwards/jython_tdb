@@ -41,8 +41,15 @@ public class PyStringMap extends PyObject implements Traverseproc {
     }
 
     public void enableLogging(){
-        if(!(table instanceof OdbMap)){
-            table = new OdbMap<>(table);
+        if(table instanceof OdbMap){
+            Py.writeWarning("PyStringMap", "enableLogging on a map which already has logging clears the history");
+        }
+        table = new OdbMap<>(table);
+    }
+
+    public void disableLogging(){
+        if(table instanceof OdbMap){
+            table = new ConcurrentHashMap<>(table);
         }
     }
 

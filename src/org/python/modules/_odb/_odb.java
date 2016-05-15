@@ -28,6 +28,10 @@ public class _odb {
         return map;
     }
 
+    public static void cleanupGlobals(PyStringMap map){
+        map.disableLogging();
+    }
+
     public static void initializeParent(PyFrame frame){
         if(parent == null){
             assert currentTimestamp == 0;
@@ -105,6 +109,8 @@ public class _odb {
         eventHistory = new LinkedList<>();
         parent = null;
 
+        enabled = false;
+        replaying = false;
 
         //TODO remove dependency on this TraceFunction class / create more generic
         TdbTraceFunction.resetInstructionCount();

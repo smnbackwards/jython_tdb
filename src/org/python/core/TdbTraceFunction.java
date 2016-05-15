@@ -66,11 +66,8 @@ public class TdbTraceFunction extends PythonTraceFunction {
                         return this;
                     }
 
-//                    System.out.println("TraceFunction "+label);
-
                     if (waitForMainPyFile) {
                         if (ts.frame.f_code.co_filename.equals("<string>")) {
-//                            System.out.println("filename is <string>");
                             return this;
                         }
 
@@ -84,7 +81,6 @@ public class TdbTraceFunction extends PythonTraceFunction {
 
                     if (callDepth == 0 && label.equals("return")) {
                         if(_odb.enabled){
-                            System.out.println("return 0" + _odb.enabled +frame.f_code.co_filename);
                             _odb.returnEvent(frame, arg);
                         }
                         _odb.enabled = false;
@@ -94,7 +90,6 @@ public class TdbTraceFunction extends PythonTraceFunction {
 
                     if (label.equals("call")) {
                         callDepth++;
-//                        System.out.println("call at ic"+instructionCount);
                         lastCallInstructionCount = instructionCount;
                         callReturnMap.push(lastCallInstructionCount);
                         _odb.callEvent(frame);
@@ -110,8 +105,6 @@ public class TdbTraceFunction extends PythonTraceFunction {
                     }
 
                     isTracing = true;
-                    int linenumber = frame.f_lineno;
-//                    System.out.println("Tracing: " + frame.f_code.co_filename + " " + frame.f_lineno + " " + getInstructionCount() + " @ " + callDepth);
                     ret = tracefunc.__call__(frame, new PyString(label), arg);
                     incInstructionCount(frame);
                     isTracing = false;
