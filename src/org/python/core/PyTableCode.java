@@ -173,7 +173,8 @@ public class PyTableCode extends PyBaseCode
             frame.f_lasti = -1;
 
             if (frame.tracefunc != null) {
-                frame.tracefunc.traceException(frame, pye);
+                frame.tracefunc.traceReturn(frame, Py.None);
+                frame.tracefunc.traceException(frame.f_back, pye);
             }
             if (ts.profilefunc != null) {
                 ts.profilefunc.traceException(frame, pye);

@@ -102,6 +102,31 @@ public class _odb {
         currentTimestamp++;
     }
 
+    public static void exceptionEvent(PyFrame frame, PyObject type, PyObject value, PyObject traceback) {
+        initializeParent(frame);
+        Py.maybeWrite("TTD exception", value.toString() + " at "+ currentTimestamp, LEVEL);
+        eventHistory.add(new OdbExceptionEvent(currentTimestamp, frame.f_lineno, parent, type, value, traceback));
+        currentTimestamp++;
+    }
+
+    public static void uncaghtExceptionEvent(PyBaseException exception){
+        OdbFrame frame = getCurrentFrame();
+        int lineno = eventHistory.peekLast().lineno;
+
+        // exception
+        eventHistory.add(new OdbExceptionEvent(currentTimestamp, lineno, frame, exception.getType(), exception, Py.None)); //TODO traceback
+        currentTimestamp++;
+
+        //Return
+        eventHistory.add(new OdbEvent(currentTimestamp, lineno, frame, OdbEvent.Type.RETURN));
+        parent.returnTimestamp = currentTimestamp;
+        parent.returnValue = Py.None;
+        parent = parent.parent;
+        //Find the matching frame index
+        currentFrameId = frames.indexOf(parent);
+        currentTimestamp++;
+    }
+
     public static void reset(){
         currentTimestamp = 0;
         currentFrameId = -1;

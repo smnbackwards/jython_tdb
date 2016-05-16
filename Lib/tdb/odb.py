@@ -53,6 +53,13 @@ class Odb(cmd.Cmd):
             if event.is_call():
                 print >> self.stdout, "--Call--"
 
+            if event.is_exception():
+                if type(event.type) == type(''):
+                    exc_type_name = event.type
+                else: exc_type_name = event.type.__name__
+                print >>self.stdout, exc_type_name + ':', repr(event.value)
+                # TODO traceback?
+
             self.print_stack_entry(frame.filename, event.lineno, frame.name, frame.return_value)
 
         self.prompt = "(Odb)<%s>" % _odb.getCurrentTimestamp();
@@ -425,6 +432,9 @@ class Odb(cmd.Cmd):
             cmd = cmd + '\n'
         try:
             exec cmd in globals, locals
+        except Exception as e:
+            print "Uncaught exception", e
+            _odb.uncaghtExceptionEvent(e)
         finally:
             sys.settrace(None)
 

@@ -79,10 +79,16 @@ public class TdbTraceFunction extends PythonTraceFunction {
                     }
 
 
-                    if (callDepth == 0 && label.equals("return")) {
-                        if(_odb.enabled){
+                    if (callDepth == 0 && (label.equals("return") || label.equals("exception"))) {
+                        if(_odb.enabled && label.equals("return")){
                             _odb.returnEvent(frame, arg);
                         }
+
+                        if(_odb.enabled && label.equals("exception")){
+                            PyTuple t = (PyTuple)arg;
+                            _odb.exceptionEvent(frame, t.pyget(0), t.pyget(1), t.pyget(2));
+                        }
+
                         _odb.enabled = false;
                         tracefunc = null;
                         return null;
@@ -102,6 +108,11 @@ public class TdbTraceFunction extends PythonTraceFunction {
 
                     if(label.equals("line")){
                         _odb.lineEvent(frame);
+                    }
+
+                    if(label.equals("exception")){
+                        PyTuple t = (PyTuple)arg;
+                        _odb.exceptionEvent(frame, t.pyget(0), t.pyget(1), t.pyget(2));
                     }
 
                     isTracing = true;

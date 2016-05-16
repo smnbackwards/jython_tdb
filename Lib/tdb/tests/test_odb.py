@@ -2,6 +2,7 @@ import sys
 import unittest
 import fibexecutionmodel
 import os
+import _odb
 from tdb import odb
 from test import test_support
 
@@ -156,7 +157,6 @@ def create_test_down(i):
 
     return _test_down
 
-
 def create_test_next(i):
     def _test_next(self):
         def control_function(debugger):
@@ -216,10 +216,42 @@ class OdbFibModelTestCase(unittest.TestCase):
 
 fibexecutionmodel.generate_tests(OdbFibModelTestCase)
 
+class OdbExceptionModelTestCase(unittest.TestCase):
+    filename = 'examples/exception.py'
+
+    def _test(self, commands_and_asserts_generator):
+        with TestGeneratorInput() as test_input:
+            debugger = odb.Odb()
+            test_input.initialize_generator(commands_and_asserts_generator(debugger))
+            debugger.run(self.filename)
+
+    def test_linenumbers(self):
+        def commands_and_asserts_generator(debugger):
+            events = _odb.getEvents()
+            linenumbers = [2, 8, 12, 2, 3, 4, 4, 5, 6, 6,
+                           13, 14, 8, 9, 9, 9, 14, 15, 17, 18,
+                           19, 20, 24, 26, 27, 31, 33, 35, 35, 35]
+            self.assertEqual(linenumbers, [e.lineno for e in events])
+            yield 'quit'
+        self._test(commands_and_asserts_generator)
+
+    def test_events(self):
+        def commands_and_asserts_generator(debugger):
+            events = _odb.getEvents()
+            types = ['L', 'L', 'L', 'C', 'L', 'L', 'E', 'L', 'L', 'R',
+                     'L', 'L', 'C', 'L', 'E', 'R', 'E', 'L', 'L', 'L',
+                     'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'E', 'R']
+            self.assertEqual(types, [e.type[0] for e in events])
+            yield 'quit'
+        self._test(commands_and_asserts_generator)
 
 def test_main():
     # test_support.verbose = 1
-    test_support.run_unittest(OdbFibFrameModelTestCase, OdbFibModelTestCase)
+    test_support.run_unittest(
+        OdbFibFrameModelTestCase,
+        OdbFibModelTestCase,
+        OdbExceptionModelTestCase
+    )
 
 
 if __name__ == '__main__':

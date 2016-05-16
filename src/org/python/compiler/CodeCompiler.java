@@ -1281,7 +1281,7 @@ public class CodeCompiler extends Visitor implements Opcodes, ClassConstants {
         for (int i = 0; i < node.getInternalHandlers().size(); i++) {
             ExceptHandler handler = (ExceptHandler) node.getInternalHandlers().get(i);
 
-            //setline(name);
+            setline(handler.getLine()); //the except: line number
             Label end_of_self = new Label();
 
             if (handler.getInternalType() != null) {
@@ -1420,6 +1420,7 @@ public class CodeCompiler extends Visitor implements Opcodes, ClassConstants {
         Label handler_end = new Label();
         ExceptionHandler handler = new ExceptionHandler();
 
+        setline(node); // the try: line number
         code.label(start);
         handler.exceptionStarts.addElement(start);
         exceptionHandlers.push(handler);
