@@ -33,7 +33,7 @@ public class _odb {
     }
 
     public static void initializeParent(PyFrame frame){
-        if(parent == null){
+        if(parent == null && frames.empty()){
             assert currentTimestamp == 0;
             assert frames.isEmpty();
             assert eventHistory.isEmpty();
@@ -72,6 +72,9 @@ public class _odb {
                 parent,
                 localMap);
 
+        //flag to speedup lookups without taking up extra space
+        parent.returnTimestamp = -1*frames.size();
+
         frames.push(parent);
 
         eventHistory.add(new OdbEvent(currentTimestamp, frame.f_lineno, parent, OdbEvent.Type.CALL));
@@ -90,7 +93,7 @@ public class _odb {
             parent.returnValue = returnValue;
             parent = parent.parent;
             //Find the matching frame index
-            currentFrameId = frames.indexOf(parent);
+            currentFrameId = parent == null ? -1 : -parent.returnTimestamp;
             currentTimestamp++;
         }
     }
@@ -123,7 +126,7 @@ public class _odb {
         parent.returnValue = Py.None;
         parent = parent.parent;
         //Find the matching frame index
-        currentFrameId = frames.indexOf(parent);
+        currentFrameId = parent == null ? -1 : -parent.returnTimestamp;
         currentTimestamp++;
     }
 

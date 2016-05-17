@@ -449,7 +449,6 @@ class Odb(cmd.Cmd):
         finally:
             sys.settrace(None)
             sys.stdout = oldstdout
-            print self.recorded_stdout.getvalue()
 
         print "Program has finished, now entering ODB mode"
         _odb.setup()

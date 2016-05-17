@@ -7,22 +7,22 @@ import java.util.*;
  */
 public class HistoryValueList<V> {
 
-    Stack<HistoryValue<V>> values = new Stack<>();
+    ArrayDeque<HistoryValue<V>> values = new ArrayDeque<>();
 
     public HistoryValueList(int timestamp, V value) {
-        values.push(new HistoryValue<V>(timestamp, value));
+        values.addLast(new HistoryValue<V>(timestamp, value));
     }
 
     public V insertValue(int timestamp, V value) {
         //TODO return old value if timestamp is overriding?
-        HistoryValue<V> topValue = values.peek();
+        HistoryValue<V> topValue = values.peekLast();
         if (!Objects.equals(topValue.getValue(),value)) {
             //Replace values with the same timestamp
             if(topValue.getTimestamp() == timestamp){
-                values.pop();
+                values.removeLast();
             }
             //Only insert new values to save space
-            values.push(new HistoryValue<V>(timestamp, value));
+            values.addLast(new HistoryValue<V>(timestamp, value));
         }
         return null;
     }
@@ -60,6 +60,6 @@ public class HistoryValueList<V> {
     }
 
     public V peekValue() {
-        return values.peek().getValue();
+        return values.peekLast().getValue();
     }
 }
