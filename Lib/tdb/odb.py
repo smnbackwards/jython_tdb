@@ -44,6 +44,11 @@ class Odb(cmd.Cmd):
     # region Cmd
 
     def preloop(self):
+        timestamp = _odb.getCurrentTimestamp()
+        output = self.recorded_stdout.get(timestamp)
+        if output :
+            self.stdout.write(output)
+
         frame = _odb.getCurrentFrame()
         if frame:
             event = _odb.getCurrentEvent()
@@ -296,6 +301,10 @@ class Odb(cmd.Cmd):
     def do_quit(self, arg):
         self.quit = 1
 
+    def do_restart(self, arg):
+        _odb.do_jump(0)
+        return NAVIGATION_COMMAND_FLAG
+
     do_q = do_quit
     do_w = do_where
     do_l = do_list
@@ -431,12 +440,16 @@ class Odb(cmd.Cmd):
         if not isinstance(cmd, types.CodeType):
             cmd = cmd + '\n'
         try:
+            oldstdout = sys.stdout
+            sys.stdout = self.recorded_stdout = _odb.StringIO()
             exec cmd in globals, locals
         except Exception as e:
             print "Uncaught exception", e
             _odb.uncaghtExceptionEvent(e)
         finally:
             sys.settrace(None)
+            sys.stdout = oldstdout
+            print self.recorded_stdout.getvalue()
 
         print "Program has finished, now entering ODB mode"
         _odb.setup()

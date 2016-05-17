@@ -331,4 +331,8 @@ public class _odb {
         }
     }
 
+
+    public static OdbStringIO StringIO(){
+        return new OdbStringIO();
+    }
 }
