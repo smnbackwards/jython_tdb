@@ -1,5 +1,6 @@
 package org.python.modules._odb;
 
+import org.magicwerk.brownies.collections.BigList;
 import org.python.core.*;
 
 import java.util.*;
@@ -12,7 +13,7 @@ public class _odb {
     private static int LEVEL = Py.COMMENT;
 
     protected static Stack<OdbFrame> frames = new Stack<>();
-    protected static LinkedList<OdbEvent> eventHistory = new LinkedList<>();
+    protected static BigList<OdbEvent> eventHistory = new BigList<>();
     protected static OdbFrame parent = null;
     protected static HistoryMap<Object,PyObject> globals = null;
 
@@ -134,7 +135,7 @@ public class _odb {
         currentTimestamp = 0;
         currentFrameId = -1;
         frames = new Stack<>();
-        eventHistory = new LinkedList<>();
+        eventHistory = new BigList<>();
         parent = null;
 
         enabled = false;
