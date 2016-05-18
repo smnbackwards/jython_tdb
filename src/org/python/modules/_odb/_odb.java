@@ -74,11 +74,11 @@ public class _odb {
                 localMap);
 
         //flag to speedup lookups without taking up extra space
-        parent.returnTimestamp = -1*frames.size();
+        parent.return_timestamp = -1*frames.size();
 
         frames.push(parent);
 
-        eventHistory.add(new OdbEvent(currentTimestamp, frame.f_lineno, parent, OdbEvent.Type.CALL));
+        eventHistory.add(new OdbCallEvent(currentTimestamp, frame.f_lineno, parent));
 
         Py.maybeWrite("TTD call", frames.peek().toString() + " at " + currentTimestamp,LEVEL);
         currentTimestamp++;
@@ -89,12 +89,12 @@ public class _odb {
     public static void returnEvent(PyFrame frame, PyObject returnValue) {
         if (!frames.empty()) {
             Py.maybeWrite("TTD return", parent.toString() + " at "+ currentTimestamp, LEVEL);
-            eventHistory.add(new OdbEvent(currentTimestamp, frame.f_lineno, parent, OdbEvent.Type.RETURN));
-            parent.returnTimestamp = currentTimestamp;
-            parent.returnValue = returnValue;
+            eventHistory.add(new OdbReturnEvent(currentTimestamp, frame.f_lineno, parent));
+            parent.return_timestamp = currentTimestamp;
+            parent.return_value = returnValue;
             parent = parent.parent;
             //Find the matching frame index
-            currentFrameId = parent == null ? -1 : -parent.returnTimestamp;
+            currentFrameId = parent == null ? -1 : -parent.return_timestamp;
             currentTimestamp++;
         }
     }
@@ -102,7 +102,7 @@ public class _odb {
     public static void lineEvent(PyFrame frame) {
         initializeParent(frame);
         Py.maybeWrite("TTD line", frame.f_lineno + " at "+ currentTimestamp, LEVEL);
-        eventHistory.add(new OdbEvent(currentTimestamp, frame.f_lineno, parent, OdbEvent.Type.LINE));
+        eventHistory.add(new OdbLineEvent(currentTimestamp, frame.f_lineno, parent));
         currentTimestamp++;
     }
 
@@ -122,12 +122,12 @@ public class _odb {
         currentTimestamp++;
 
         //Return
-        eventHistory.add(new OdbEvent(currentTimestamp, lineno, frame, OdbEvent.Type.RETURN));
-        parent.returnTimestamp = currentTimestamp;
-        parent.returnValue = Py.None;
+        eventHistory.add(new OdbReturnEvent(currentTimestamp, lineno, frame));
+        parent.return_timestamp = currentTimestamp;
+        parent.return_value = Py.None;
         parent = parent.parent;
         //Find the matching frame index
-        currentFrameId = parent == null ? -1 : -parent.returnTimestamp;
+        currentFrameId = parent == null ? -1 : -parent.return_timestamp;
         currentTimestamp++;
     }
 
@@ -216,13 +216,13 @@ public class _odb {
         OdbFrame frame = getCurrentFrame();
 
         //if I am the return event I am looking for then just step 1
-        if (getCurrentEvent().eventType == OdbEvent.Type.RETURN
+        if (getCurrentEvent() instanceof OdbReturnEvent
                 && getCurrentEvent().frame.equals(frame)) {
             do_step();
             return;
         }
 
-        do_jump(frame.returnTimestamp);
+        do_jump(frame.return_timestamp);
     }
 
     public static void do_rreturn(){
@@ -239,7 +239,7 @@ public class _odb {
         OdbEvent event = null;
         OdbFrame frame = getCurrentFrame();
 
-        if(getCurrentEvent().eventType == OdbEvent.Type.RETURN){
+        if(getCurrentEvent() instanceof OdbReturnEvent){
             frame = frame.parent;
         }
 
@@ -261,7 +261,7 @@ public class _odb {
         OdbEvent event = null;
         OdbFrame frame = getCurrentFrame();
 
-        if(getCurrentEvent().eventType == OdbEvent.Type.CALL){
+        if(getCurrentEvent() instanceof OdbCallEvent){
             frame = frame.parent;
         }
 

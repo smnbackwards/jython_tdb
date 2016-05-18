@@ -241,7 +241,7 @@ class OdbExceptionModelTestCase(unittest.TestCase):
             types = ['L', 'L', 'L', 'C', 'L', 'L', 'E', 'L', 'L', 'R',
                      'L', 'L', 'C', 'L', 'E', 'R', 'E', 'L', 'L', 'L',
                      'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'E', 'R']
-            self.assertEqual(types, [e.type[0] for e in events])
+            self.assertEqual(types, [e.event_type()[0] for e in events])
             yield 'quit'
         self._test(commands_and_asserts_generator)
 

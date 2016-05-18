@@ -7,34 +7,24 @@ import org.python.expose.ExposedType;
 import java.util.Map;
 
 
-@ExposedType(name = "odb.frame")
-public class OdbFrame extends PyObject {
+public class OdbFrame {
 
-    public static final PyType TYPE = PyType.fromClass(OdbFrame.class);
-
-    @ExposedGet
+    //Use python style naming since we don't want to incur the memory overhead of exposing the type
     public OdbFrame parent;
-    @ExposedGet(name = "name")
-    public String methodName;
-    @ExposedGet
+    public String name;
     public int timestamp;
-    @ExposedGet(name = "return_timestamp")
-    public int returnTimestamp;
-    @ExposedGet(name = "return_value")
-    public PyObject returnValue;
-    @ExposedGet
+    public int return_timestamp;
+    public PyObject return_value;
     public String filename;
-    @ExposedGet
     public int lineno;
     public HistoryMap<Object, PyObject> locals;
 
 
     public OdbFrame(int timestamp, String filename, int lineno, String methodName, OdbFrame parent, HistoryMap<Object, PyObject> locals) {
-        super(TYPE);
         this.timestamp = timestamp;
         this.filename = filename;
         this.lineno = lineno;
-        this.methodName = methodName;
+        this.name = methodName;
         this.parent = parent;
         this.locals = locals;
     }

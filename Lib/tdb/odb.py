@@ -52,13 +52,13 @@ class Odb(cmd.Cmd):
         frame = _odb.getCurrentFrame()
         if frame:
             event = _odb.getCurrentEvent()
-            if event.is_return():
+            if event.event_type() == 'Return':
                 print >> self.stdout, "--Return--"
 
-            if event.is_call():
+            if event.event_type() == 'Call':
                 print >> self.stdout, "--Call--"
 
-            if event.is_exception():
+            if event.event_type() == 'Exception':
                 if type(event.type) == type(''):
                     exc_type_name = event.type
                 else: exc_type_name = event.type.__name__
