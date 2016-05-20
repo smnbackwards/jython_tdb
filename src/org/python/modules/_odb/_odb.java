@@ -20,8 +20,6 @@ public class _odb {
     protected static OdbFrame parent = null;
     protected static HistoryMap<Object, PyObject> globals = null;
 
-    protected static int parentIndex = -1;
-
     protected static int currentFrameId = 0;
     public static int currentTimestamp = 0;
     public static boolean enabled = false;
@@ -36,12 +34,6 @@ public class _odb {
 
     public static void cleanupGlobals(PyStringMap map) {
         map.disableLogging();
-    }
-
-    public static void checkConsistency(){
-        if(currentFrameId >= 0) {
-
-        }
     }
 
     public static void initializeParent(PyFrame frame) {
@@ -59,7 +51,7 @@ public class _odb {
             Map<Object, PyObject> tempMap = ((PyStringMap) frame.f_globals).getMap();
             globals = ((OdbMap<Object, PyObject>) tempMap).historyMap;
 
-            parent = new OdbFrame(0, //Flag to say this is the enclosing frame
+            parent = new OdbFrame(frames.size(), 0, //Flag to say this is the enclosing frame
                     parentFrame.f_code.co_filename,
                     parentFrame.f_back.f_lineno,
                     parentFrame.f_code.co_name,
@@ -78,21 +70,18 @@ public class _odb {
 
         initializeParent(frame.f_back);
 
-        parent = new OdbFrame(currentTimestamp,
+        parent = new OdbFrame(frames.size(), currentTimestamp,
                 frame.f_code.co_filename,
                 frame.f_back.f_lineno,
                 frame.f_code.co_name,
                 parent,
                 localMap);
 
-        //flag to speedup lookups without taking up extra space
-        parent.return_timestamp = -1 * frames.size();
-
         frames.push(parent);
         currentFrameId = frames.size() - 1;
 
 //        eventHistory.add(new OdbCallEvent(frame.f_lineno, parent));
-        events.add(OdbEvent.createEvent(frame.f_lineno, frames.size() - frames.search(parent), OdbEvent.EVENT_TYPE.CALL));
+        events.add(OdbEvent.createEvent(frame.f_lineno, parent.index, OdbEvent.EVENT_TYPE.CALL));
 
         Py.maybeWrite("TTD call", frames.peek().toString() + " at " + currentTimestamp, LEVEL);
         currentTimestamp++;
@@ -102,13 +91,13 @@ public class _odb {
         if (!frames.empty()) {
             Py.maybeWrite("TTD return", parent.toString() + " at " + currentTimestamp, LEVEL);
 //            eventHistory.add(new OdbReturnEvent(frame.f_lineno, parent));
-            events.add(OdbEvent.createEvent(frame.f_lineno, frames.size() - frames.search(parent), OdbEvent.EVENT_TYPE.RETURN)); //TODO
+            events.add(OdbEvent.createEvent(frame.f_lineno, parent.index, OdbEvent.EVENT_TYPE.RETURN)); //TODO
 
             parent.return_timestamp = currentTimestamp;
             parent.return_value = returnValue;
             parent = parent.parent;
             //Find the matching frame index
-            currentFrameId = parent == null ? 0 : -parent.return_timestamp;
+            currentFrameId = parent == null ? 0 : parent.index;
             currentTimestamp++;
         }
     }
@@ -117,7 +106,7 @@ public class _odb {
         initializeParent(frame);
         Py.maybeWrite("TTD line", frame.f_lineno + " at " + currentTimestamp, LEVEL);
 //        eventHistory.add(new OdbLineEvent(frame.f_lineno, parent));
-        events.add(OdbEvent.createEvent(frame.f_lineno, frames.size() - frames.search(parent), OdbEvent.EVENT_TYPE.LINE));
+        events.add(OdbEvent.createEvent(frame.f_lineno, parent.index, OdbEvent.EVENT_TYPE.LINE));
         currentTimestamp++;
     }
 
@@ -125,7 +114,7 @@ public class _odb {
         initializeParent(frame);
         Py.maybeWrite("TTD exception", value.toString() + " at " + currentTimestamp, LEVEL);
 //        eventHistory.add(new OdbExceptionEvent(frame.f_lineno, parent, type, value, traceback));
-        events.add(OdbEvent.createEvent(frame.f_lineno, frames.size() - frames.search(parent), OdbEvent.EVENT_TYPE.EXCEPTION)); //TODO exception list!
+        events.add(OdbEvent.createEvent(frame.f_lineno, parent.index, OdbEvent.EVENT_TYPE.EXCEPTION)); //TODO exception list!
         currentTimestamp++;
     }
 
@@ -279,7 +268,7 @@ public class _odb {
             frame = frame.parent;
         }
 
-        int frameid = frames.size() - frames.search(frame);
+        int frameid = frame == null ? 0 : frame.index;
 
         for (int i = currentTimestamp + 1; i < events.size(); i++) {
             long eventlong = events.get(i);

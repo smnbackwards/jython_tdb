@@ -10,6 +10,7 @@ import java.util.Map;
 public class OdbFrame {
 
     //Use python style naming since we don't want to incur the memory overhead of exposing the type
+    public final int index;
     public OdbFrame parent;
     public String name;
     public int timestamp;
@@ -20,7 +21,8 @@ public class OdbFrame {
     public HistoryMap<Object, PyObject> locals;
 
 
-    public OdbFrame(int timestamp, String filename, int lineno, String methodName, OdbFrame parent, HistoryMap<Object, PyObject> locals) {
+    public OdbFrame(int index, int timestamp, String filename, int lineno, String methodName, OdbFrame parent, HistoryMap<Object, PyObject> locals) {
+        this.index = index;
         this.timestamp = timestamp;
         this.filename = filename;
         this.lineno = lineno;
