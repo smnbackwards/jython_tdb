@@ -115,8 +115,7 @@ class Odb(cmd.Cmd):
         Lists the events recorded by Odb
         '''
         events = _odb.getEvents()
-        for e in events:
-            print e
+        print events
 
     def do_chistory(self, arg):
         '''
