@@ -5,8 +5,8 @@ package org.python.modules._odb;
  */
 public class OdbReturnEvent extends OdbEvent {
 
-    public OdbReturnEvent(int timestamp, int lineno, OdbFrame frame) {
-        super(timestamp, lineno, frame);
+    public OdbReturnEvent(int lineno, OdbFrame frame) {
+        super(lineno, frame);
     }
 
     @Override

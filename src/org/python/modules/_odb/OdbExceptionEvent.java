@@ -10,8 +10,8 @@ public class OdbExceptionEvent extends OdbEvent {
     public final PyObject value;
     public final PyObject traceback;
 
-    public OdbExceptionEvent(int timestamp, int lineno, OdbFrame frame, PyObject type, PyObject value, PyObject traceback) {
-        super(timestamp, lineno, frame);
+    public OdbExceptionEvent(int lineno, OdbFrame frame, PyObject type, PyObject value, PyObject traceback) {
+        super(lineno, frame);
         this.type = type;
         this.value = value;
         this.traceback = traceback;
