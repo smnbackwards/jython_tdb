@@ -239,20 +239,16 @@ public class _odb {
     }
 
     public static void do_return() {
-        OdbFrame frame = getCurrentFrame();
-
         //if I am the return event I am looking for then just step 1
-        if (getCurrentEvent() instanceof OdbReturnEvent
-                && getCurrentEvent().frame.equals(frame)) {
+        if (OdbEvent.decodeEventType(events.get(currentTimestamp)) == OdbEvent.EVENT_TYPE.RETURN) {
             do_step();
             return;
         }
 
-        do_jump(frame.return_timestamp);
+        do_jump(getCurrentFrame().return_timestamp);
     }
 
     public static void do_rreturn() {
-        OdbEvent event = null;
         OdbFrame frame = getCurrentFrame();
         if (frame.timestamp == getCurrentTimestamp()) {
             do_rstep();
@@ -264,7 +260,7 @@ public class _odb {
     public static void do_next() {
         OdbFrame frame = getCurrentFrame();
 
-        if (getCurrentEvent() instanceof OdbReturnEvent) {
+        if (OdbEvent.decodeEventType(events.get(currentTimestamp)) == OdbEvent.EVENT_TYPE.RETURN) {
             frame = frame.parent;
         }
 
@@ -282,11 +278,11 @@ public class _odb {
     public static void do_rnext() {
         OdbFrame frame = getCurrentFrame();
 
-        if (getCurrentEvent() instanceof OdbCallEvent) {
+        if ( OdbEvent.decodeEventType(events.get(currentTimestamp)) == OdbEvent.EVENT_TYPE.CALL) {
             frame = frame.parent;
         }
 
-        int frameid = frames.size() - frames.search(frame);
+        int frameid = frame.index;
 
         for (int i = currentTimestamp-1; i >= 0; i--) {
             long eventlong = events.get(i);
@@ -301,7 +297,7 @@ public class _odb {
     public static void do_jump(int n) {
         if (n >= 0 && n < events.size()) {
             currentTimestamp = n;
-            currentFrameId = frames.indexOf(getCurrentEvent().frame);
+            currentFrameId = OdbEvent.decodeEventFrameId(events.get(currentTimestamp));
         }
     }
 
