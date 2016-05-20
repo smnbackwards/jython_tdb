@@ -227,11 +227,10 @@ class OdbExceptionModelTestCase(unittest.TestCase):
 
     def test_linenumbers(self):
         def commands_and_asserts_generator(debugger):
-            events = _odb.getEvents()
             linenumbers = [2, 8, 12, 2, 3, 4, 4, 5, 6, 6,
                            13, 14, 8, 9, 9, 9, 14, 15, 17, 18,
                            19, 20, 24, 26, 27, 31, 33, 35, 35, 35]
-            self.assertEqual(linenumbers, [e.lineno for e in events])
+            self.assertEqual(linenumbers, _odb.getLinenos())
             yield 'quit'
         self._test(commands_and_asserts_generator)
 
@@ -241,7 +240,7 @@ class OdbExceptionModelTestCase(unittest.TestCase):
             types = ['L', 'L', 'L', 'C', 'L', 'L', 'E', 'L', 'L', 'R',
                      'L', 'L', 'C', 'L', 'E', 'R', 'E', 'L', 'L', 'L',
                      'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'E', 'R']
-            self.assertEqual(types, [e.event_type()[0] for e in events])
+            self.assertEqual(types, [e[0] for e in _odb.getEventTypes()])
             yield 'quit'
         self._test(commands_and_asserts_generator)
 

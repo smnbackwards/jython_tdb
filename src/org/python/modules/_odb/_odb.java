@@ -19,8 +19,12 @@ public class _odb {
         return OdbTraceFunction.getCurrentTimestamp();
     }
 
-    public static OdbEvent getCurrentEvent(){
-        return OdbTraceFunction.getCurrentEvent();
+    public static String getCurrentEventType(){
+        return OdbTraceFunction.getCurrentEventType().toString();
+    }
+
+    public static int getCurrentEventLineno(){
+        return OdbTraceFunction.getCurrentEventLineno();
     }
 
     public static int getCurrentFrameId(){
@@ -29,6 +33,10 @@ public class _odb {
 
     public static OdbFrame getCurrentFrame(){
         return OdbTraceFunction.getCurrentFrame();
+    }
+
+    public static OdbException getCurrentException(){
+        return OdbTraceFunction.getCurrentException();
     }
 
     public static void reset() {
@@ -50,6 +58,24 @@ public class _odb {
             sb.append(String.format("<%s> \t%s \t%s:%s", "%s \n", i, type, frame.filename, lineno));
         }
         return sb.toString();
+    }
+
+    public static List<Integer> getLinenos(){
+        LongBigList events = OdbTraceFunction.getEvents();
+        List<Integer> linenos = new ArrayList<>(events.size());
+        for (int i = 0; i < events.size(); i++) {
+            linenos.add(OdbEvent.decodeEventLineno(events.get(i)));
+        }
+        return linenos;
+    }
+
+    public static List<String> getEventTypes(){
+        LongBigList events = OdbTraceFunction.getEvents();
+        List<String> types = new ArrayList<>(events.size());
+        for (int i = 0; i < events.size(); i++) {
+            types.add(OdbEvent.decodeEventType(events.get(i)).toString());
+        }
+        return types;
     }
 
     public static List<OdbFrame> getFrames() {
@@ -196,6 +222,9 @@ public class _odb {
         OdbTraceFunction.moveToFrame(OdbTraceFunction.getCurrentFrameId() - 1);
     }
 
+    public static void uncaughtExceptionEvent(PyBaseException exception){
+        OdbTraceFunction.uncaughtExceptionEvent(exception);
+    }
 
     //Static helper methods
     public static PyStringMap initializeGlobals(PyStringMap map) {

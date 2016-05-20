@@ -8,6 +8,8 @@ import org.python.expose.ExposedType;
 
 /**
  * Created by nms12 on 5/20/2016.
+ * A test version of odb which allows the test to mock the main features of odb
+ * without needing to create a full debugger instance
  */
 @ExposedType
 public class _odb_test extends PyObject {

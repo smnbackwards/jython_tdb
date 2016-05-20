@@ -3,6 +3,8 @@ package org.python.core;
 import org.magicwerk.brownies.collections.primitive.LongBigList;
 import org.python.modules._odb.*;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.Stack;
 
@@ -16,6 +18,7 @@ public class OdbTraceFunction extends PythonTraceFunction {
 
     protected static Stack<OdbFrame> frames = new Stack<>();
     protected static LongBigList events = new LongBigList();
+    protected static ArrayList<OdbException> exceptions = new ArrayList<>();
     protected static OdbFrame parent = null;
     protected static HistoryMap<Object, PyObject> globals = null;
 
@@ -59,24 +62,13 @@ public class OdbTraceFunction extends PythonTraceFunction {
         return OdbEvent.decodeEventLineno(events.get(currentTimestamp));
     }
 
-    public static OdbEvent getCurrentEvent() {
-        long eventLong = OdbTraceFunction.getEvents().get(getCurrentTimestamp());
-        int lineno = OdbEvent.decodeEventLineno(eventLong);
-        int frameId = OdbEvent.decodeEventFrameId(eventLong);
-        OdbFrame frame = frames.get(frameId);
-
-        switch (OdbEvent.decodeEventType(eventLong)) {
-
-            case LINE:
-                return new OdbLineEvent(lineno, frame);
-            case CALL:
-                return new OdbCallEvent(lineno, frame);
-            case RETURN:
-                return new OdbReturnEvent(lineno, frame);
-            case EXCEPTION:
-            default:
-                return null; //TODO exception
+    public static OdbException getCurrentException(){
+        for (OdbException e: exceptions) {
+            if(e.timestamp == currentTimestamp){
+                return e;
+            }
         }
+        return null;
     }
 
     public static int getCurrentTimestamp() {
@@ -198,10 +190,10 @@ public class OdbTraceFunction extends PythonTraceFunction {
         currentTimestamp++;
     }
 
-    public static void returnEvent(PyFrame frame, PyObject returnValue) {
+    protected static void returnEvent(int lineno, PyObject returnValue){
         if (!frames.empty()) {
             Py.maybeWrite("TTD return", parent.toString() + " at " + currentTimestamp, LEVEL);
-            events.add(OdbEvent.createEvent(frame.f_lineno, parent.index, OdbEvent.EVENT_TYPE.RETURN)); //TODO
+            events.add(OdbEvent.createEvent(lineno, parent.index, OdbEvent.EVENT_TYPE.RETURN)); //TODO
 
             parent.return_timestamp = currentTimestamp;
             parent.return_value = returnValue;
@@ -212,38 +204,36 @@ public class OdbTraceFunction extends PythonTraceFunction {
         }
     }
 
-    public static void lineEvent(PyFrame frame) {
+    protected static void returnEvent(PyFrame frame, PyObject returnValue) {
+        returnEvent(frame.f_lineno, returnValue);
+    }
+
+    protected static void lineEvent(PyFrame frame) {
         initializeParent(frame);
         Py.maybeWrite("TTD line", frame.f_lineno + " at " + currentTimestamp, LEVEL);
         events.add(OdbEvent.createEvent(frame.f_lineno, parent.index, OdbEvent.EVENT_TYPE.LINE));
         currentTimestamp++;
     }
 
-    public static void exceptionEvent(PyFrame frame, PyObject type, PyObject value, PyObject traceback) {
+    protected static void exceptionEvent(PyFrame frame, PyObject type, PyObject value, PyObject traceback) {
         initializeParent(frame);
         Py.maybeWrite("TTD exception", value.toString() + " at " + currentTimestamp, LEVEL);
         events.add(OdbEvent.createEvent(frame.f_lineno, parent.index, OdbEvent.EVENT_TYPE.EXCEPTION)); //TODO exception list!
+        exceptions.add(new OdbException(currentTimestamp, type, value, traceback));
         currentTimestamp++;
     }
 
-    public static void uncaghtExceptionEvent(PyBaseException exception) {
-//        OdbFrame frame = getCurrentFrame();
-//        int lineno = eventHistory.peekLast().lineno;
-//
-//        // exception
-//        eventHistory.add(new OdbExceptionEvent(lineno, frame, exception.getType(), exception, Py.None)); //TODO traceback
-//        //TODO events
-//        currentTimestamp++;
-//
-//        //Return
-//        eventHistory.add(new OdbReturnEvent(lineno, frame));
-//        //TODO events
-//        parent.return_timestamp = currentTimestamp;
-//        parent.return_value = Py.None;
-//        parent = parent.parent;
-//        //Find the matching frame index
-//        currentFrameId = parent == null ? -1 : -parent.return_timestamp;
-//        currentTimestamp++;
+    public static void uncaughtExceptionEvent(PyBaseException exception) {
+        OdbFrame frame = getCurrentFrame();
+        int lineno = OdbEvent.decodeEventLineno(events.peekLast());
+
+        // exception
+        events.add(OdbEvent.createEvent(lineno, frame.index, OdbEvent.EVENT_TYPE.EXCEPTION)); //TODO traceback
+        exceptions.add(new OdbException(currentTimestamp, exception.getType(), exception, Py.None));
+        currentTimestamp++;
+
+        //Return
+        returnEvent(frame.lineno, Py.None);
     }
 
 

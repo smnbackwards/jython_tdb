@@ -29,9 +29,6 @@ class Odb(cmd.Cmd):
     def get_current_frame(self):
         return _odb.getCurrentFrame()
 
-    def get_current_event(self):
-        return _odb.getCurrentEvent()
-
     def get_current_timestamp(self):
         return _odb.getCurrentTimestamp()
 
@@ -39,7 +36,7 @@ class Odb(cmd.Cmd):
         return _odb.getCurrentFrameId()
 
     def get_current_lineno(self):
-        return self.get_current_event().lineno
+        return _odb.getCurrentEventLineno()
 
     # region Cmd
 
@@ -51,21 +48,23 @@ class Odb(cmd.Cmd):
 
         frame = _odb.getCurrentFrame()
         if frame:
-            event = _odb.getCurrentEvent()
-            if event.event_type() == 'Return':
+            event_type = _odb.getCurrentEventType()
+            event_lineno = _odb.getCurrentEventLineno()
+            if event_type == 'RETURN':
                 print >> self.stdout, "--Return--"
 
-            if event.event_type() == 'Call':
+            if event_type == 'CALL':
                 print >> self.stdout, "--Call--"
 
-            if event.event_type() == 'Exception':
-                if type(event.type) == type(''):
-                    exc_type_name = event.type
-                else: exc_type_name = event.type.__name__
-                print >>self.stdout, exc_type_name + ':', repr(event.value)
+            if event_type == 'EXCEPTION':
+                exception = _odb.getCurrentException()
+                if type(exception.type) == type(''):
+                    exc_type_name = exception.type
+                else: exc_type_name = exception.type.__name__
+                print >>self.stdout, exc_type_name + ':', repr(exception.value)
                 # TODO traceback?
 
-            self.print_stack_entry(frame.filename, event.lineno, frame.name, frame.return_value)
+            self.print_stack_entry(frame.filename, event_lineno, frame.name, frame.return_value)
 
         self.prompt = "(Odb)<%s>" % _odb.getCurrentTimestamp();
 
@@ -366,7 +365,7 @@ class Odb(cmd.Cmd):
     def print_stack_trace(self):
         try:
             currentframe = _odb.getCurrentFrame()
-            event = _odb.getCurrentEvent()
+            event_lineno = _odb.getCurrentEventLineno()
             frames = []
             frame = currentframe.parent if currentframe else None
 
@@ -380,7 +379,7 @@ class Odb(cmd.Cmd):
 
             # Use the most accureate line number for the actual line
             if currentframe:
-                self.print_stack_entry(currentframe.filename, event.lineno, currentframe.name)
+                self.print_stack_entry(currentframe.filename, event_lineno, currentframe.name)
 
         except KeyboardInterrupt:
             pass
@@ -444,7 +443,7 @@ class Odb(cmd.Cmd):
             exec cmd in globals, locals
         except Exception as e:
             print "Uncaught exception", e
-            _odb.uncaghtExceptionEvent(e)
+            _odb.uncaughtExceptionEvent(e)
         finally:
             sys.settrace(None)
             sys.stdout = oldstdout
