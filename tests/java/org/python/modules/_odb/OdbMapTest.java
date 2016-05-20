@@ -52,7 +52,7 @@ public class OdbMapTest {
         @Test
         public void testKeysetRemove() {
 //            ConcurrentHashMap<String,String> map = new ConcurrentHashMap<>();
-            _odb.replaying = true;
+            OdbTraceFunction.setReplaying(true);
             Map<String,String> map = new OdbMap<String, String>(0);
 
             String value = "value";
@@ -65,7 +65,7 @@ public class OdbMapTest {
         @Test
         public void testKeysetIteratorRemove() {
 //            ConcurrentHashMap<String,String> map = new ConcurrentHashMap<>();
-            _odb.replaying = true;
+            OdbTraceFunction.setReplaying(true);
             Map<String,String> map = new OdbMap<String, String>(0);
 
             String value = "value";

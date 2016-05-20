@@ -1,5 +1,6 @@
 package org.python.modules._odb;
 
+import org.python.core.OdbTraceFunction;
 import org.python.core.Py;
 
 import java.util.*;
@@ -59,15 +60,11 @@ public class OdbList<V> implements List<V>, RandomAccess, RemoveRange<V> {
     }
 
     protected boolean isReplaying() {
-        return _odb.replaying;// && historyList.hasHistory();
-    }
-
-    protected boolean isRecording() {
-        return true;//TODO is this the paradigm we want to use? _odb.enabled;
+        return OdbTraceFunction.isReplaying();// && historyList.hasHistory();
     }
 
     protected int getTimestamp() {
-        return _odb.getCurrentTimestamp();
+        return OdbTraceFunction.getCurrentTimestamp();
     }
 
     @Override
@@ -172,17 +169,13 @@ public class OdbList<V> implements List<V>, RandomAccess, RemoveRange<V> {
 
     @Override
     public boolean add(V v) {
-        if (isRecording()) {
-            historyList.add(getTimestamp(), v);
-        }
+        historyList.add(getTimestamp(), v);
         return list.add(v);
     }
 
     @Override
     public boolean remove(Object o) {
-        if (isRecording()) {
-            historyList.remove(getTimestamp(), o);
-        }
+        historyList.remove(getTimestamp(), o);
         return list.remove(o);
     }
 
@@ -196,24 +189,20 @@ public class OdbList<V> implements List<V>, RandomAccess, RemoveRange<V> {
 
     @Override
     public boolean addAll(Collection<? extends V> c) {
-        if (isRecording()) {
-            historyList.addAll(getTimestamp(), c);
-        }
+        historyList.addAll(getTimestamp(), c);
         return list.addAll(c);
     }
 
     @Override
     public boolean addAll(int index, Collection<? extends V> c) {
-        if (isRecording()) {
-            historyList.addAll(getTimestamp(), index, c);
-        }
+        historyList.addAll(getTimestamp(), index, c);
         return list.addAll(index, c);
     }
 
     @Override
     public boolean removeAll(Collection<?> c) {
         boolean modified = list.removeAll(c);
-        if (isRecording() && modified) {
+        if (modified) {
             historyList.update(getTimestamp(), list);
         }
         return modified;
@@ -222,7 +211,7 @@ public class OdbList<V> implements List<V>, RandomAccess, RemoveRange<V> {
     @Override
     public boolean retainAll(Collection<?> c) {
         boolean modified = list.retainAll(c);
-        if (isRecording() && modified) {
+        if (modified) {
             historyList.update(getTimestamp(), list);
         }
         return modified;
@@ -231,24 +220,18 @@ public class OdbList<V> implements List<V>, RandomAccess, RemoveRange<V> {
     @Override
     public void replaceAll(UnaryOperator<V> operator) {
         list.replaceAll(operator);
-        if (isRecording()) {
-            historyList.update(getTimestamp(), list);
-        }
+        historyList.update(getTimestamp(), list);
     }
 
     @Override
     public void sort(Comparator<? super V> c) {
         list.sort(c);
-        if (isRecording()) {
-            historyList.update(getTimestamp(), list);
-        }
+        historyList.update(getTimestamp(), list);
     }
 
     @Override
     public void clear() {
-        if (isRecording()) {
-            historyList.clear(getTimestamp());
-        }
+        historyList.clear(getTimestamp());
         list.clear();
     }
 
@@ -262,25 +245,19 @@ public class OdbList<V> implements List<V>, RandomAccess, RemoveRange<V> {
 
     @Override
     public V set(int index, V element) {
-        if (isRecording()) {
-            historyList.set(getTimestamp(), index, element);
-        }
+        historyList.set(getTimestamp(), index, element);
         return list.set(index, element);
     }
 
     @Override
     public void add(int index, V element) {
-        if (isRecording()) {
-            historyList.add(getTimestamp(), index, element);
-        }
+        historyList.add(getTimestamp(), index, element);
         list.add(index, element);
     }
 
     @Override
     public V remove(int index) {
-        if (isRecording()) {
-            historyList.remove(getTimestamp(), index);
-        }
+        historyList.remove(getTimestamp(), index);
         return list.remove(index);
     }
 

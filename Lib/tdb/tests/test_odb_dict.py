@@ -1,6 +1,8 @@
-import _odb
+import _odb as odbMod
 import unittest
 from test import test_support
+
+_odb = odbMod.test_odb()
 
 
 class DictTestCase(unittest.TestCase):

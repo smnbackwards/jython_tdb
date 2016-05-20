@@ -4,6 +4,9 @@ import org.magicwerk.brownies.collections.BigList;
 import org.magicwerk.brownies.collections.helper.BigLists;
 import org.magicwerk.brownies.collections.primitive.LongBigList;
 import org.python.core.*;
+import org.python.expose.ExposedGet;
+import org.python.expose.ExposedSet;
+import org.python.expose.ExposedType;
 
 import java.util.*;
 
@@ -11,156 +14,38 @@ import java.util.*;
  * Created by nms12 on 4/15/2016.
  */
 public class _odb {
-    //    private static int LEVEL = Py.MESSAGE;
-    private static int LEVEL = Py.COMMENT;
 
-    protected static Stack<OdbFrame> frames = new Stack<>();
-    protected static LongBigList events = new LongBigList();
-    protected static OdbFrame parent = null;
-    protected static HistoryMap<Object, PyObject> globals = null;
-
-    protected static int currentFrameId = 0;
-    public static int currentTimestamp = 0;
-    public static boolean enabled = false;
-    public static boolean replaying = false;
-
-    public static PyStringMap initializeGlobals(PyStringMap map) {
-        //PyStringMap is not exposed to python in Jython
-        //So we include this helper function to call the enableLogging method on it
-        map.enableLogging();
-        return map;
+    public static int getCurrentTimestamp(){
+        return OdbTraceFunction.getCurrentTimestamp();
     }
 
-    public static void cleanupGlobals(PyStringMap map) {
-        map.disableLogging();
+    public static OdbEvent getCurrentEvent(){
+        return OdbTraceFunction.getCurrentEvent();
     }
 
-    public static void initializeParent(PyFrame frame) {
-        if (parent == null && frames.empty()) {
-            assert currentTimestamp == 0;
-            assert frames.isEmpty();
-            assert currentFrameId == 0;
-            assert events.isEmpty();
-
-            PyFrame parentFrame = frame;
-
-            assert frame.f_globals instanceof PyStringMap;
-            assert frame.f_globals == frame.f_locals;
-
-            Map<Object, PyObject> tempMap = ((PyStringMap) frame.f_globals).getMap();
-            globals = ((OdbMap<Object, PyObject>) tempMap).historyMap;
-
-            parent = new OdbFrame(frames.size(), 0, //Flag to say this is the enclosing frame
-                    parentFrame.f_code.co_filename,
-                    parentFrame.f_back.f_lineno,
-                    parentFrame.f_code.co_name,
-                    null,
-                    globals);
-            frames.push(parent);
-            currentFrameId++;
-        }
+    public static int getCurrentFrameId(){
+        return OdbTraceFunction.getCurrentFrameId();
     }
 
-    public static void callEvent(PyFrame frame) {
-        //This event is called from code being debugged
-        //which means logging should be enabled
-        //so the locals dictionary is backed by an OdbMap
-        HistoryMap<Object, PyObject> localMap = ((OdbMap<Object, PyObject>) ((PyStringMap) frame.getLocals()).getMap()).historyMap;
-
-        initializeParent(frame.f_back);
-
-        parent = new OdbFrame(frames.size(), currentTimestamp,
-                frame.f_code.co_filename,
-                frame.f_back.f_lineno,
-                frame.f_code.co_name,
-                parent,
-                localMap);
-
-        frames.push(parent);
-        currentFrameId = frames.size() - 1;
-
-        events.add(OdbEvent.createEvent(frame.f_lineno, parent.index, OdbEvent.EVENT_TYPE.CALL));
-
-        Py.maybeWrite("TTD call", frames.peek().toString() + " at " + currentTimestamp, LEVEL);
-        currentTimestamp++;
-    }
-
-    public static void returnEvent(PyFrame frame, PyObject returnValue) {
-        if (!frames.empty()) {
-            Py.maybeWrite("TTD return", parent.toString() + " at " + currentTimestamp, LEVEL);
-            events.add(OdbEvent.createEvent(frame.f_lineno, parent.index, OdbEvent.EVENT_TYPE.RETURN)); //TODO
-
-            parent.return_timestamp = currentTimestamp;
-            parent.return_value = returnValue;
-            parent = parent.parent;
-            //Find the matching frame index
-            currentFrameId = parent == null ? 0 : parent.index;
-            currentTimestamp++;
-        }
-    }
-
-    public static void lineEvent(PyFrame frame) {
-        initializeParent(frame);
-        Py.maybeWrite("TTD line", frame.f_lineno + " at " + currentTimestamp, LEVEL);
-        events.add(OdbEvent.createEvent(frame.f_lineno, parent.index, OdbEvent.EVENT_TYPE.LINE));
-        currentTimestamp++;
-    }
-
-    public static void exceptionEvent(PyFrame frame, PyObject type, PyObject value, PyObject traceback) {
-        initializeParent(frame);
-        Py.maybeWrite("TTD exception", value.toString() + " at " + currentTimestamp, LEVEL);
-        events.add(OdbEvent.createEvent(frame.f_lineno, parent.index, OdbEvent.EVENT_TYPE.EXCEPTION)); //TODO exception list!
-        currentTimestamp++;
-    }
-
-    public static void uncaghtExceptionEvent(PyBaseException exception) {
-//        OdbFrame frame = getCurrentFrame();
-//        int lineno = eventHistory.peekLast().lineno;
-//
-//        // exception
-//        eventHistory.add(new OdbExceptionEvent(lineno, frame, exception.getType(), exception, Py.None)); //TODO traceback
-//        //TODO events
-//        currentTimestamp++;
-//
-//        //Return
-//        eventHistory.add(new OdbReturnEvent(lineno, frame));
-//        //TODO events
-//        parent.return_timestamp = currentTimestamp;
-//        parent.return_value = Py.None;
-//        parent = parent.parent;
-//        //Find the matching frame index
-//        currentFrameId = parent == null ? -1 : -parent.return_timestamp;
-//        currentTimestamp++;
+    public static OdbFrame getCurrentFrame(){
+        return OdbTraceFunction.getCurrentFrame();
     }
 
     public static void reset() {
-        currentTimestamp = 0;
-        currentFrameId = 0;
-        frames = new Stack<>();
-        events = new LongBigList();
-        parent = null;
-
-        enabled = false;
-        replaying = false;
-
-        //TODO remove dependency on this TraceFunction class / create more generic
-        TdbTraceFunction.resetInstructionCount();
+        OdbTraceFunction.reset();
     }
 
     public static void setup() {
-        currentTimestamp = 0;
-        currentFrameId = 0;
-        enabled = false;
-        replaying = true;
+        OdbTraceFunction.setup();
     }
 
     public static String getEvents() {
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < events.size(); i++) {
-            long eventlong = events.get(i);
+        for (int i = 0; i < OdbTraceFunction.getEvents().size(); i++) {
+            long eventlong = OdbTraceFunction.getEvents().get(i);
             int lineno = OdbEvent.decodeEventLineno(eventlong);
             int frameid = OdbEvent.decodeEventFrameId(eventlong);
-            OdbFrame frame = frames.get(frameid);
+            OdbFrame frame = getFrames().get(frameid);
             OdbEvent.EVENT_TYPE type = OdbEvent.decodeEventType(eventlong);
             sb.append(String.format("<%s> \t%s \t%s:%s", "%s \n", i, type, frame.filename, lineno));
         }
@@ -168,51 +53,20 @@ public class _odb {
     }
 
     public static List<OdbFrame> getFrames() {
-        return frames;
-    }
-
-    public static int getCurrentTimestamp() {
-        return currentTimestamp;
-    }
-
-    public static OdbEvent getCurrentEvent() {
-        long eventLong = events.get(currentTimestamp);
-        int lineno = OdbEvent.decodeEventLineno(eventLong);
-        int frameId = OdbEvent.decodeEventFrameId(eventLong);
-        OdbFrame frame = frames.get(frameId);
-
-        switch (OdbEvent.decodeEventType(eventLong)) {
-
-            case LINE:
-                return new OdbLineEvent(lineno, frame);
-            case CALL:
-                return new OdbCallEvent(lineno, frame);
-            case RETURN:
-                return new OdbReturnEvent(lineno, frame);
-            case EXCEPTION:
-            default:
-                return null; //TODO exception
-        }
-    }
-
-    public static OdbFrame getCurrentFrame() {
-        return frames.get(currentFrameId);
-    }
-
-    public static int getCurrentFrameId() {
-        return currentFrameId;
+        return OdbTraceFunction.getFrames();
     }
 
     public static PyStringMap getCurrentLocals() {
-        if (getCurrentFrame().locals == globals) {
+        if (getCurrentFrame().locals == OdbTraceFunction.getGlobals()) {
             return getGlobals();
         }
-        return getCurrentFrame().getLocals(currentTimestamp);
+        return OdbTraceFunction.getLocals();
     }
 
     public static PyStringMap getGlobals() {
+        int currentTimestamp = getCurrentTimestamp();
         PyStringMap map = new PyStringMap();
-        for (Map.Entry<Object, HistoryValueList<PyObject>> e : globals.map.entrySet()) {
+        for (Map.Entry<Object, HistoryValueList<PyObject>> e : OdbTraceFunction.getGlobals().map.entrySet()) {
             HistoryValue<PyObject> value = e.getValue().getHistoryValue(currentTimestamp);
             if (value != null && value.getValue() != null && !e.getKey().equals("__builtins__")) {
                 map.__setitem__((String) e.getKey(), value.getValue());
@@ -222,7 +76,7 @@ public class _odb {
     }
 
     public static List<HistoryValue<PyObject>> getLocalHistory(String key) {
-        return getCurrentFrame().locals.getBefore(currentTimestamp, key);
+        return getCurrentFrame().locals.getBefore(getCurrentTimestamp(), key);
     }
 
     public static PyStringMap getFrameArguments() {
@@ -231,16 +85,16 @@ public class _odb {
     }
 
     public static void do_step() {
-        do_jump(currentTimestamp + 1);
+        do_jump(getCurrentTimestamp() + 1);
     }
 
     public static void do_rstep() {
-        do_jump(currentTimestamp - 1);
+        do_jump(getCurrentTimestamp() - 1);
     }
 
     public static void do_return() {
         //if I am the return event I am looking for then just step 1
-        if (OdbEvent.decodeEventType(events.get(currentTimestamp)) == OdbEvent.EVENT_TYPE.RETURN) {
+        if (OdbTraceFunction.getCurrentEventType() == OdbEvent.EVENT_TYPE.RETURN) {
             do_step();
             return;
         }
@@ -260,15 +114,17 @@ public class _odb {
     public static void do_next() {
         OdbFrame frame = getCurrentFrame();
 
-        if (OdbEvent.decodeEventType(events.get(currentTimestamp)) == OdbEvent.EVENT_TYPE.RETURN) {
+        if (OdbTraceFunction.getCurrentEventType() == OdbEvent.EVENT_TYPE.RETURN) {
             frame = frame.parent;
         }
 
         int frameid = frame == null ? 0 : frame.index;
 
-        for (int i = currentTimestamp + 1; i < events.size(); i++) {
+        LongBigList events = OdbTraceFunction.getEvents();
+
+        for (int i = getCurrentTimestamp() + 1; i < events.size(); i++) {
             long eventlong = events.get(i);
-            if(OdbEvent.decodeEventFrameId(eventlong) == frameid){
+            if (OdbEvent.decodeEventFrameId(eventlong) == frameid) {
                 do_jump(i);
                 return;
             }
@@ -278,15 +134,16 @@ public class _odb {
     public static void do_rnext() {
         OdbFrame frame = getCurrentFrame();
 
-        if ( OdbEvent.decodeEventType(events.get(currentTimestamp)) == OdbEvent.EVENT_TYPE.CALL) {
+        if (OdbTraceFunction.getCurrentEventType() == OdbEvent.EVENT_TYPE.CALL) {
             frame = frame.parent;
         }
 
         int frameid = frame.index;
+        LongBigList events = OdbTraceFunction.getEvents();
 
-        for (int i = currentTimestamp-1; i >= 0; i--) {
+        for (int i = getCurrentTimestamp() - 1; i >= 0; i--) {
             long eventlong = events.get(i);
-            if(OdbEvent.decodeEventFrameId(eventlong) == frameid){
+            if (OdbEvent.decodeEventFrameId(eventlong) == frameid) {
                 do_jump(i);
                 return;
             }
@@ -295,10 +152,7 @@ public class _odb {
 
 
     public static void do_jump(int n) {
-        if (n >= 0 && n < events.size()) {
-            currentTimestamp = n;
-            currentFrameId = OdbEvent.decodeEventFrameId(events.get(currentTimestamp));
-        }
+        OdbTraceFunction.moveToTimestamp(n);
     }
 
     public static void moveUpFrames() {
@@ -306,11 +160,7 @@ public class _odb {
         if (frame == null) {
             return;
         }
-        if (frame.parent != null) {
-            //Use parent to climb up call stack
-            currentFrameId = frames.indexOf(frame.parent);
-            currentTimestamp = frames.get(currentFrameId).timestamp;
-        }
+        OdbTraceFunction.moveToFrame(frame.parent);
     }
 
     public static void moveDownFrames() {
@@ -320,9 +170,11 @@ public class _odb {
         if (frame == null) {
             return;
         }
+        LongBigList events = OdbTraceFunction.getEvents();
+        Stack<OdbFrame> frames = OdbTraceFunction.getFrames();
         long eventlong = -1;
         int timestamp = -1;
-        for (int i = currentTimestamp; i < events.size(); i++) {
+        for (int i = getCurrentTimestamp(); i < events.size(); i++) {
             eventlong = events.get(i);
             OdbFrame eventframe = frames.get(OdbEvent.decodeEventFrameId(eventlong));
             if (eventframe != null && eventframe.parent == frame) {
@@ -332,28 +184,38 @@ public class _odb {
         }
 
         if (timestamp >= 0) {
-            currentTimestamp = timestamp;
-            currentFrameId = OdbEvent.decodeEventFrameId(eventlong);
+            OdbTraceFunction.moveToTimestamp(timestamp);
         }
     }
 
     public static void moveNextFrames() {
-        if (currentFrameId < frames.size() - 1) {
-            currentFrameId++;
-            currentTimestamp = frames.get(currentFrameId).timestamp;
-        }
+        OdbTraceFunction.moveToFrame(OdbTraceFunction.getCurrentFrameId() + 1);
     }
 
     public static void movePrevFrames() {
-        if (currentFrameId > 0) {
-            currentFrameId--;
-            currentTimestamp = frames.get(currentFrameId).timestamp;
-        }
+        OdbTraceFunction.moveToFrame(OdbTraceFunction.getCurrentFrameId() - 1);
+    }
+
+
+    //Static helper methods
+    public static PyStringMap initializeGlobals(PyStringMap map) {
+        //PyStringMap is not exposed to python in Jython
+        //So we include this helper function to call the enableLogging method on it
+        map.enableLogging();
+        return map;
+    }
+
+    public static void cleanupGlobals(PyStringMap map) {
+        map.disableLogging();
     }
 
 
     public static OdbStringIO StringIO() {
         return new OdbStringIO();
+    }
+
+    public static _odb_test test_odb(){
+        return new _odb_test();
     }
 
 }

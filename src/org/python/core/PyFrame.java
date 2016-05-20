@@ -186,7 +186,7 @@ public class PyFrame extends PyObject implements Traverseproc {
     @ExposedSet(name = "f_trace")
     public void setTrace(PyObject trace) {
 //        tracefunc = new PythonTraceFunction(trace);
-        tracefunc = new TdbTraceFunction(trace);
+        tracefunc = new OdbTraceFunction(trace);
     }
 
     @ExposedDelete(name = "f_trace")
@@ -282,7 +282,7 @@ public class PyFrame extends PyObject implements Traverseproc {
 
     public void setlocal(int index, PyObject value) {
         if (f_fastlocals != null) {
-            if(_odb.enabled && f_locals != null){
+            if(OdbTraceFunction.isEnabled() && f_locals != null){
                 //log to our OdbMap
                 setlocal(f_code.co_varnames[index], value);
             }

@@ -49,7 +49,7 @@ public class PyDictionary extends PyObject implements ConcurrentMap, Traversepro
      */
     public PyDictionary(PyType type, int capacity) {
         super(type);
-        internalMap = _odb.enabled ? new OdbMap<>(capacity, Generic.CHM_LOAD_FACTOR, Generic.CHM_CONCURRENCY_LEVEL)
+        internalMap = OdbTraceFunction.isEnabled() ? new OdbMap<>(capacity, Generic.CHM_LOAD_FACTOR, Generic.CHM_CONCURRENCY_LEVEL)
                 : new ConcurrentHashMap<>(capacity, Generic.CHM_LOAD_FACTOR, Generic.CHM_CONCURRENCY_LEVEL);
     }
 
@@ -58,7 +58,7 @@ public class PyDictionary extends PyObject implements ConcurrentMap, Traversepro
      */
     public PyDictionary(PyType type) {
         super(type);
-        internalMap = _odb.enabled ? new OdbMap<>() : Generic.concurrentMap();
+        internalMap = OdbTraceFunction.isEnabled() ? new OdbMap<>() : Generic.concurrentMap();
     }
 
     /**
@@ -70,12 +70,12 @@ public class PyDictionary extends PyObject implements ConcurrentMap, Traversepro
 
     public PyDictionary(ConcurrentMap<PyObject, PyObject> backingMap, boolean useBackingMap) {
         super(TYPE);
-        internalMap = !_odb.enabled ? backingMap : new OdbMap<>(backingMap);
+        internalMap = !OdbTraceFunction.isEnabled() ? backingMap : new OdbMap<>(backingMap);
     }
 
     public PyDictionary(PyType type, ConcurrentMap<PyObject, PyObject> backingMap, boolean useBackingMap) {
         super(type);
-        internalMap = !_odb.enabled ? backingMap : new OdbMap<>(backingMap);
+        internalMap = !OdbTraceFunction.isEnabled() ? backingMap : new OdbMap<>(backingMap);
     }
 
     /**

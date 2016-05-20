@@ -1,5 +1,6 @@
 package org.python.modules._odb;
 
+import org.python.core.OdbTraceFunction;
 import org.python.core.Py;
 import org.python.util.Generic;
 
@@ -41,6 +42,14 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
         putAll(map);
     }
 
+    public HistoryMap<K,V> getHistoryMap(){
+        return historyMap;
+    }
+
+    public ConcurrentMap<K,V> getMap(){
+        return map;
+    }
+
     @Override
     public String toString() {
         Iterator<Map.Entry<K, V>> i = entrySet().iterator();
@@ -63,15 +72,11 @@ public class OdbMap<K, V> implements ConcurrentMap<K, V> {
     }
 
     protected boolean isReplaying() {
-        return _odb.replaying;// && historyList.hasHistory();
-    }
-
-    protected boolean isRecording() {
-        return true;//TODO is this the paradigm we want to use? _odb.enabled;
+        return OdbTraceFunction.isReplaying();// && historyList.hasHistory();
     }
 
     protected int getTimestamp() {
-        return _odb.getCurrentTimestamp();
+        return OdbTraceFunction.getCurrentTimestamp();
     }
 
 

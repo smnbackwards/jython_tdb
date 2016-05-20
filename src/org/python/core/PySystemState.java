@@ -461,7 +461,7 @@ public class PySystemState extends PyObject implements AutoCloseable,
             ts.tracefunc = null;
         } else {
 //            ts.tracefunc = new PythonTraceFunction(tracefunc);
-            ts.tracefunc = new TdbTraceFunction(tracefunc);
+            ts.tracefunc = new OdbTraceFunction(tracefunc);
         }
     }
 

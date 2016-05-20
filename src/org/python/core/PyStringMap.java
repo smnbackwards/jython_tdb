@@ -59,7 +59,7 @@ public class PyStringMap extends PyObject implements Traverseproc {
 
     public PyStringMap(int capacity) {
         super(getLazyType());
-        table = _odb.enabled ? new OdbMap<>(capacity, Generic.CHM_LOAD_FACTOR, Generic.CHM_CONCURRENCY_LEVEL)
+        table = OdbTraceFunction.isEnabled() ? new OdbMap<>(capacity, Generic.CHM_LOAD_FACTOR, Generic.CHM_CONCURRENCY_LEVEL)
                 : new ConcurrentHashMap<>(capacity, Generic.CHM_LOAD_FACTOR, Generic.CHM_CONCURRENCY_LEVEL);
     }
 

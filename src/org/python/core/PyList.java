@@ -42,18 +42,18 @@ public class PyList extends PySequenceList implements List {
 
     public PyList(PyType type) {
         super(type);
-        list = _odb.enabled ? new OdbList<>() : new ArrayList<>();
+        list = OdbTraceFunction.isEnabled() ? new OdbList<>() : new ArrayList<>();
     }
 
     public PyList(PyType type, PyObject[] elements) {
         super(type);
-        list = _odb.enabled ? new OdbList<>(Arrays.asList(elements))
+        list = OdbTraceFunction.isEnabled() ? new OdbList<>(Arrays.asList(elements))
                 : new ArrayList<>(Arrays.asList(elements));
     }
 
     public PyList(PyType type, Collection c) {
         super(type);
-        list = _odb.enabled ? new OdbList<>() : new ArrayList<>();
+        list = OdbTraceFunction.isEnabled() ? new OdbList<>() : new ArrayList<>();
         for (Object o : c) {
             add(o);
         }

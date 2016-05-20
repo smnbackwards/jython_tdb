@@ -1,8 +1,9 @@
-import _odb
+import _odb as odbMod
 import unittest
 from test import test_support
 
 LIST = type([])
+_odb = odbMod.test_odb()
 
 
 class ListTestCase(unittest.TestCase):

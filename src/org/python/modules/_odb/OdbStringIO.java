@@ -1,5 +1,6 @@
 package org.python.modules._odb;
 
+import org.python.core.OdbTraceFunction;
 import org.python.core.PyObject;
 
 /**
@@ -13,7 +14,7 @@ public class OdbStringIO {
     protected int currentTimestamp = -1;
 
     protected int getTimestamp() {
-        return _odb.getCurrentTimestamp();
+        return OdbTraceFunction.getCurrentTimestamp();
     }
 
     //required by python spec, but not implemented in Jython so we ignore it too
