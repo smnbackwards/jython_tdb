@@ -31,7 +31,6 @@ class Odb(cmd.Cmd):
 
 
     def reset(self):
-        print >> self.stdout, 'reset'
         self.lineno = None
         self.stdoutno = self.default_stdout_size
         self.event_timestamp = None
@@ -204,6 +203,9 @@ class Odb(cmd.Cmd):
         print _odb.getFrameArguments()
 
     def do_retval(self, arg):
+        '''
+        Lists the return value of the current function / frame
+        '''
         frame = _odb.getCurrentFrame()
         print >> self.stdout, "%s returns %s at %s" % (frame.name, frame.return_value, frame.return_timestamp)
 
@@ -253,7 +255,7 @@ class Odb(cmd.Cmd):
             for lineno in range(first, last + 1):
                 line = linecache.getline(filename, lineno)  # ,self.curframe.f_globals)
                 if not line:
-                    print >> self.stdout, '*** No more events'
+                    print >> self.stdout, '[EOF]'
                     break
                 else:
                     s = repr(lineno).rjust(3)
@@ -267,6 +269,10 @@ class Odb(cmd.Cmd):
             pass
 
     def do_out(self, args):
+        '''
+        displays the last 10 lines of stdout
+        'out n' displays 10 lines of stdout before instuction count n
+        '''
         if self.stdoutno == -1:
             print >> self.stdout, '*** End of stdout'
             return
@@ -376,6 +382,157 @@ class Odb(cmd.Cmd):
             self.prev_timestamp = _odb.do_jump(arg)
         return NAVIGATION_COMMAND_FLAG
 
+    def do_continue(self, arg):
+        '''
+        Continues execution forwards until a breakpoint is reached or the program exits
+        '''
+        self.prev_timestamp = self.get_current_timestamp()
+        _odb.do_continue()
+        return NAVIGATION_COMMAND_FLAG
+
+    def do_rcontinue(self, arg):
+        '''
+        Continues execution backwards until a breakpoint is reached or the program's invocation is reached
+        '''
+        self.prev_timestamp = _odb.do_rcontinue()
+        return NAVIGATION_COMMAND_FLAG
+
+
+    def do_break(self, arg, temporary = 0):
+        '''
+        break [[filename:]lineno]
+        sets a breakpoint
+        '''
+        if not arg:
+            # no argument, so we print the breakpoints
+            for b in _odb.getBreakpoints():
+                print b
+            return
+
+        # parse arguments; comma has lowest precedence
+        # and cannot occur in filename
+        filename = None
+        lineno = None
+
+        colon = arg.rfind(':')
+        if colon >= 0:
+            filename = arg[:colon].rstrip()
+            f = self.lookupmodule(filename)
+            if not f:
+                print >>self.stdout, '*** ', repr(filename),
+                print >>self.stdout, 'not found from sys.path'
+                return
+            else:
+                filename = f
+            arg = arg[colon+1:].lstrip()
+            try:
+                lineno = int(arg)
+            except ValueError, msg:
+                print >>self.stdout, '*** Bad lineno:', arg
+                return
+        else:
+            # no colon; can be lineno
+            try:
+                lineno = int(arg)
+            except ValueError:
+
+                return
+        if not filename:
+            filename = self.defaultFile()
+        # Check for reasonable breakpoint
+        line = self.checkline(filename, lineno)
+        if line:
+            # now set the break point
+            print _odb.setBreakpoint(filename, line)
+
+    do_b = do_break
+
+    def defaultFile(self):
+        """Produce a reasonable default."""
+        filename = _odb.getCurrentFrame().filename
+        if filename == '<string>' and self.mainpyfile:
+            filename = self.mainpyfile
+        return filename
+
+    def checkline(self, filename, lineno):
+        line = linecache.getline(filename, lineno, _odb.getGlobals())
+        if not line:
+            print >>self.stdout, 'End of file'
+            return 0
+        line = line.strip()
+        # Don't allow setting breakpoint at a blank line
+        if (not line or (line[0] == '#') or
+                (line[:3] == '"""') or line[:3] == "'''"):
+            print >>self.stdout, '*** Blank or comment'
+            return 0
+        return lineno
+
+    def lookupmodule(self, filename):
+        """Helper function for break/clear parsing -- may be overridden.
+
+        lookupmodule() translates (possibly incomplete) file or module name
+        into an absolute file name.
+        """
+        if os.path.isabs(filename) and  os.path.exists(filename):
+            return filename
+        f = os.path.join(sys.path[0], filename)
+        if  os.path.exists(f) and self.canonic(f) == self.mainpyfile:
+            return f
+        root, ext = os.path.splitext(filename)
+        if ext == '':
+            filename = filename + '.py'
+        if os.path.isabs(filename):
+            return filename
+        for dirname in sys.path:
+            while os.path.islink(dirname):
+                dirname = os.readlink(dirname)
+            fullname = os.path.join(dirname, filename)
+            if os.path.exists(fullname):
+                return fullname
+        return None
+
+    def do_clear(self, arg):
+        """Three possibilities, tried in this order:
+        clear -> clear all breaks, ask for confirmation
+        clear file:lineno -> clear all breaks at file:lineno
+        clear bpno bpno ... -> clear breakpoints by number"""
+        if not arg:
+            try:
+                reply = raw_input('Clear all breaks? ')
+            except EOFError:
+                reply = 'no'
+            reply = reply.strip().lower()
+            if reply in ('y', 'yes'):
+                _odb.clearAllBreakpoints()
+            return
+        if ':' in arg:
+            # Make sure it works for "clear C:\foo\bar.py:12"
+            i = arg.rfind(':')
+            filename = arg[:i]
+            arg = arg[i+1:]
+            try:
+                lineno = int(arg)
+            except ValueError:
+                err = "Invalid line number (%s)" % arg
+            else:
+                err = _odb.clearBreakpoint(filename, lineno)
+            if err: print >>self.stdout, '***', err
+            return
+        numberlist = arg.split()
+        for i in numberlist:
+            try:
+                i = int(i)
+            except ValueError:
+                print >>self.stdout, 'Breakpoint index %r is not a number' % i
+                continue
+
+            err = _odb.clearBreakpointNumber(i)
+            if err:
+                print >>self.stdout, '***', err
+            else:
+                print >>self.stdout, 'Deleted breakpoint', i
+    do_cl = do_clear # 'c' is already an abbreviation for 'continue'
+
     def do_quit(self, arg):
         self.quit = 1
 
@@ -397,6 +554,8 @@ class Odb(cmd.Cmd):
     do_n = do_next
     do_rn = do_rnext
     do_o = do_out
+    do_c = do_continue
+    do_rc = do_rcontinue
 
     # endregion
 

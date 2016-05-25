@@ -14,6 +14,7 @@ import java.util.*;
  * Created by nms12 on 4/15/2016.
  */
 public class _odb {
+    protected static BreakpointManager breakpointManager = new BreakpointManager();
 
     public static int getCurrentTimestamp(){
         return OdbTraceFunction.getCurrentTimestamp();
@@ -40,6 +41,7 @@ public class _odb {
     }
 
     public static void reset() {
+        breakpointManager = new BreakpointManager();
         OdbTraceFunction.reset();
     }
 
@@ -126,15 +128,16 @@ public class _odb {
             return do_step();
         }
 
-        return do_jump(getCurrentFrame().return_timestamp);
+        return do_jump(firstBreakpointBetween(getCurrentTimestamp(), getCurrentFrame().return_timestamp));
     }
 
     public static int do_rreturn() {
         OdbFrame frame = getCurrentFrame();
-        if (frame.timestamp == getCurrentTimestamp()) {
+        int currentTimestamp = getCurrentTimestamp();
+        if (frame.timestamp == currentTimestamp) {
             return do_rstep();
         } else {
-            return do_jump(frame.timestamp);
+            return do_jump(lastBreakpointBetween(frame.timestamp, currentTimestamp));
         }
     }
 
@@ -145,13 +148,18 @@ public class _odb {
             frame = frame.parent;
         }
 
-        int frameid = frame == null ? 0 : frame.index;
+        if(frame == null){
+            return getCurrentTimestamp();
+        }
 
         LongBigList events = OdbTraceFunction.getEvents();
+        List<Integer> breakpointLines = breakpointManager.getBreakpointLinesForFile(frame.filename);
 
         for (int i = getCurrentTimestamp() + 1; i < events.size(); i++) {
             long eventlong = events.get(i);
-            if (OdbEvent.decodeEventFrameId(eventlong) == frameid) {
+            int frameId = OdbEvent.decodeEventFrameId(eventlong);
+            int lineno = OdbEvent.decodeEventLineno(eventlong);
+            if (frameId == frame.index || breakpointLines.contains(lineno)) {
                 return do_jump(i);
             }
         }
@@ -165,12 +173,18 @@ public class _odb {
             frame = frame.parent;
         }
 
-        int frameid = frame.index;
+        if(frame == null){
+            return getCurrentTimestamp();
+        }
+
         LongBigList events = OdbTraceFunction.getEvents();
+        List<Integer> breakpointLines = breakpointManager.getBreakpointLinesForFile(frame.filename);
 
         for (int i = getCurrentTimestamp() - 1; i >= 0; i--) {
             long eventlong = events.get(i);
-            if (OdbEvent.decodeEventFrameId(eventlong) == frameid) {
+            int frameId = OdbEvent.decodeEventFrameId(eventlong);
+            int lineno = OdbEvent.decodeEventLineno(eventlong);
+            if (frameId == frame.index || breakpointLines.contains(lineno)) {
                 return do_jump(i);
             }
         }
@@ -181,6 +195,16 @@ public class _odb {
     public static int do_jump(int n) {
         OdbTraceFunction.moveToTimestamp(n);
         return getCurrentTimestamp();
+    }
+
+    public static int do_continue(){
+        int stopTime = firstBreakpointBetween(getCurrentTimestamp(), OdbTraceFunction.getEvents().size()-1);
+        return do_jump(stopTime);
+    }
+
+    public static int do_rcontinue(){
+        int stopTime = lastBreakpointBetween(0, getCurrentTimestamp());
+        return do_jump(stopTime);
     }
 
     public static int moveUpFrames() {
@@ -226,6 +250,87 @@ public class _odb {
     public static int movePrevFrames() {
         OdbTraceFunction.moveToFrame(OdbTraceFunction.getCurrentFrameId() - 1);
         return getCurrentTimestamp();
+    }
+
+    private static int firstBreakpointBetween(int startTimestamp, int endTimestamp){
+        if(startTimestamp == endTimestamp){
+            return endTimestamp;
+        }
+
+        LongBigList events = OdbTraceFunction.getEvents();
+        long eventLong = events.get(startTimestamp);
+        int frameId = OdbEvent.decodeEventFrameId(eventLong);
+        String filename = OdbTraceFunction.getFrames().get(frameId).filename;
+        List<Integer> lineNumbers = breakpointManager.getBreakpointLinesForFile(filename);
+
+        if(lineNumbers.isEmpty()){
+            return endTimestamp;
+        }
+
+        for (int i = startTimestamp + 1 ; i < endTimestamp; i++ ) {
+            eventLong = events.get(i);
+            if (lineNumbers.contains(OdbEvent.decodeEventLineno(eventLong))){
+                return i;
+            }
+        }
+
+        return endTimestamp;
+    }
+
+    private static int lastBreakpointBetween(int startTimestamp, int endTimestamp){
+        if(startTimestamp == endTimestamp){
+            return endTimestamp;
+        }
+
+        LongBigList events = OdbTraceFunction.getEvents();
+        long eventLong = events.get(startTimestamp);
+        int frameId = OdbEvent.decodeEventFrameId(eventLong);
+        String filename = OdbTraceFunction.getFrames().get(frameId).filename;
+        List<Integer> lineNumbers = breakpointManager.getBreakpointLinesForFile(filename);
+
+        if(lineNumbers.isEmpty()){
+            return startTimestamp;
+        }
+
+        for (int i = endTimestamp - 1; i >= 0; i--) {
+            eventLong = events.get(i);
+            if (lineNumbers.contains(OdbEvent.decodeEventLineno(eventLong))){
+                return i;
+            }
+        }
+
+        return 0;
+    }
+
+    public static String setBreakpoint(String filename, int lineno){
+        return breakpointManager.insert(filename, lineno).toString();
+    }
+
+    public static Collection<Breakpoint> getBreakpoints(){
+        return breakpointManager.getBreakpoints();
+    }
+
+    public static void clearAllBreakpoints(){
+        breakpointManager.clearAll();
+    }
+
+    public static String clearBreakpoint(String filename, int lineno){
+        if(breakpointManager.clear(filename, lineno)){
+            return null;
+        }
+        return String.format("There is no breakpoint at %s:%d", filename, lineno);
+    }
+
+    public static String clearBreakpointNumber(int index){
+        if(!breakpointManager.checkIndex(index)){
+            return String.format("No breakpoint numbered %d", index);
+        }
+
+        if(breakpointManager.clear(index)){
+            return null;
+        }
+
+        return String.format("Breakpoint with index %d already deleted", index);
     }
 
     public static void uncaughtExceptionEvent(PyBaseException exception){

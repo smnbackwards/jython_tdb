@@ -43,6 +43,94 @@ class OdbFibFrameModelTestCase(unittest.TestCase):
             test_input.initialize_generator(commands_and_asserts_generator(debugger))
             debugger.run(self.fib)
 
+    def _test(self, commands_and_asserts_generator):
+        with TestGeneratorInput() as test_input:
+            debugger = odb.Odb()
+            test_input.initialize_generator(commands_and_asserts_generator(debugger))
+            debugger.run(self.fib)
+
+    def test_continue(self):
+        def commands_and_asserts_generator(debugger):
+            yield 'break 4'
+            yield 'continue' ; self.assertEqual(4, debugger.get_current_timestamp())
+            yield 'continue' ; self.assertEqual(7, debugger.get_current_timestamp())
+            yield 'continue' ; self.assertEqual(16, debugger.get_current_timestamp())
+            yield 'continue' ; self.assertEqual(21, debugger.get_current_timestamp())
+            yield 'continue' ; self.assertEqual(23, debugger.get_current_timestamp())
+            yield 'continue' ; self.assertEqual(23, debugger.get_current_timestamp())
+            yield 'quit'
+        self._test(commands_and_asserts_generator)
+
+    def test_rcontinue(self):
+        def commands_and_asserts_generator(debugger):
+            yield 'continue' ; self.assertEqual(23, debugger.get_current_timestamp())
+            yield 'break 4'
+            yield 'rcontinue' ; self.assertEqual(21, debugger.get_current_timestamp())
+            yield 'rcontinue' ; self.assertEqual(16, debugger.get_current_timestamp())
+            yield 'rcontinue' ; self.assertEqual(7, debugger.get_current_timestamp())
+            yield 'rcontinue' ; self.assertEqual(4, debugger.get_current_timestamp())
+            yield 'rcontinue' ; self.assertEqual(0, debugger.get_current_timestamp())
+            yield 'rcontinue' ; self.assertEqual(0, debugger.get_current_timestamp())
+            yield 'quit'
+        self._test(commands_and_asserts_generator)
+
+    def test_break_next(self):
+        def commands_and_asserts_generator(debugger):
+            yield 'break 2'
+            yield 'next' ; self.assertEqual(1, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(3, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(4, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(6, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(7, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(9, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(10, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(11, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(13, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(14, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(15, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(16, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(18, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(19, debugger.get_current_timestamp())
+            yield 'next' ; self.assertEqual(20, debugger.get_current_timestamp())
+            yield 'quit'
+        self._test(commands_and_asserts_generator)
+
+    def test_break_rnext(self):
+        def commands_and_asserts_generator(debugger):
+            yield 'jump 23'
+            yield 'break 2'
+            yield 'rnext' ; self.assertEqual(22, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(18, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(17, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(13, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(12, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(9, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(8, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(7, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(6, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(5, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(4, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(3, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(2, debugger.get_current_timestamp())
+            yield 'rnext' ; self.assertEqual(1, debugger.get_current_timestamp())
+            yield 'quit'
+        self._test(commands_and_asserts_generator)
+
+    def test_break_return(self):
+        def commands_and_asserts_generator(debugger):
+            yield 'break 2'
+            yield 'return' ; self.assertEqual(3, debugger.get_current_timestamp())
+            yield 'quit'
+        self._test(commands_and_asserts_generator)
+
+    def test_break_rnext(self):
+        def commands_and_asserts_generator(debugger):
+            yield 'jump 23'
+            yield 'break 2'
+            yield 'rreturn' ; self.assertEqual(18, debugger.get_current_timestamp())
+            yield 'quit'
+        self._test(commands_and_asserts_generator)
+
     # region model based tests
     class OdbExecutionModel():
         def __init__(self, frame_id, up_frame_timestamp, down_frame_timestamp, next_frame_timestamp,
