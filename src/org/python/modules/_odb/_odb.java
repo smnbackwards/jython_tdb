@@ -94,10 +94,13 @@ public class _odb {
     }
 
     public static PyStringMap getGlobals() {
-        int currentTimestamp = getCurrentTimestamp();
+        return getGlobalsAt(getCurrentTimestamp());
+    }
+
+    public static PyStringMap getGlobalsAt(int timestamp) {
         PyStringMap map = new PyStringMap();
         for (Map.Entry<Object, HistoryValueList<PyObject>> e : OdbTraceFunction.getGlobals().map.entrySet()) {
-            HistoryValue<PyObject> value = e.getValue().getHistoryValue(currentTimestamp);
+            HistoryValue<PyObject> value = e.getValue().getHistoryValue(timestamp);
             if (value != null && value.getValue() != null && !e.getKey().equals("__builtins__")) {
                 map.__setitem__((String) e.getKey(), value.getValue());
             }

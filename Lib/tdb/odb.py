@@ -127,7 +127,7 @@ class Odb(cmd.Cmd):
         current_timestamp = self.get_current_timestamp()
         if arg:
             #removed the argument, so that repeated calls work correctly
-            self.lastcmd = 'history'
+            self.lastcmd = 'events'
             try:
                 first = int(arg)
             except:
@@ -185,15 +185,53 @@ class Odb(cmd.Cmd):
         except KeyboardInterrupt:
             pass
 
-    def do_vhistory(self, arg):
+    def do_history(self, arg):
         '''
         Displays a list of values which the variable had in the past
         <0> 5 means at timestamp <0> the value was 5
         '''
+        if not arg:
+            print >> self.stdout, 'history requires a variable name'
         values = _odb.getLocalHistory(arg)
         if values:
-            for v in values:
-                print v
+            try:
+                for v in values:
+                    timestamp = '<%s>'%v.getTimestamp();
+                    print >> self.stdout, '%s : %s'%(timestamp.ljust(10), v.getValue())
+            except KeyboardInterrupt:
+                pass
+
+    def do_eval(self, arg):
+        try:
+            save_stdout = sys.stdout
+            save_stdin = sys.stdin
+            save_displayhook = sys.displayhook
+            try:
+                sys.stdin = self.stdin
+                sys.stdout = self.stdout
+                sys.displayhook = self.displayhook
+                frame = _odb.getCurrentFrame()
+                last_result = self
+                for i in range(frame.timestamp, frame.return_timestamp) :
+                    try:
+                        result = eval(arg, _odb.getGlobalsAt(i), frame.getLocals(i))
+                        if not (result == last_result) :
+                            last_result = result
+                            timestamp = '<%s>'%(i);
+                            print >> self.stdout, '%s : %s'%(timestamp.ljust(10), result)
+                        else :
+                            pass
+                    except NameError :
+                        pass
+                    except Exception as e:
+                        print 'exception', e
+                        pass
+            finally:
+                sys.stdout = save_stdout
+                sys.stdin = save_stdin
+                sys.displayhook = save_displayhook
+        except KeyboardInterrupt:
+            pass
 
     def do_args(self, arg):
         '''
@@ -308,7 +346,7 @@ class Odb(cmd.Cmd):
         '''
         Moves to the first timestamp in the next frame in terms of the chronological order in which frames were
         placed on the call stack
-        To see a list of frames use 'chistory'
+        To see a list of frames use 'frames'
         To see the current call stack use 'where'
         '''
         self.prev_timestamp = _odb.moveNextFrames()
@@ -318,7 +356,7 @@ class Odb(cmd.Cmd):
         '''
         Moves to the first timestamp in the previous frame in terms of the chronological order in which frames were
         placed on the call stack
-        To see a list of frames use 'chistory'
+        To see a list of frames use 'frames'
         To see the current call stack use 'where'
         '''
         self.prev_timestamp = _odb.movePrevFrames()
