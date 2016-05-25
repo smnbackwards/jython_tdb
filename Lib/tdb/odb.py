@@ -212,8 +212,18 @@ class Odb(cmd.Cmd):
                 sys.displayhook = self.displayhook
                 frame = _odb.getCurrentFrame()
                 last_result = self
-                for i in range(frame.timestamp, frame.return_timestamp) :
+                i = frame.timestamp + 1
+                while i < frame.return_timestamp :
+                    # Slight hack, that only works if we are looking for expressions local to the function
+                    # should probably check if the expression uses a global, and then do an exhaustive search
+                    if _odb.getEventType(i) == 'CALL' :
+                        i = _odb.getEventFrame(i).return_timestamp + 1
+                        continue
+
                     try:
+                        # profiling revealed, that writing class files and compiling java bytecode were the largest
+                        # protion of the runtime. Massive speed boost if we move this code into java
+                        # and run it via something like Py.eval() with a pre-compiled code block
                         result = eval(arg, _odb.getGlobalsAt(i), frame.getLocals(i))
                         if not (result == last_result) :
                             last_result = result
@@ -226,6 +236,7 @@ class Odb(cmd.Cmd):
                     except Exception as e:
                         print 'exception', e
                         pass
+                    i = i + 1
             finally:
                 sys.stdout = save_stdout
                 sys.stdin = save_stdin

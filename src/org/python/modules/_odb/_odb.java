@@ -40,6 +40,14 @@ public class _odb {
         return OdbTraceFunction.getCurrentException();
     }
 
+    public static String getEventType(int timestamp){
+        return OdbEvent.decodeEventType(OdbTraceFunction.getEvents().get(timestamp)).toString();
+    }
+
+    public static OdbFrame getEventFrame(int timestamp){
+        return OdbTraceFunction.getFrames().get(OdbEvent.decodeEventFrameId(OdbTraceFunction.getEvents().get(timestamp)));
+    }
+
     public static void reset() {
         breakpointManager = new BreakpointManager();
         OdbTraceFunction.reset();
