@@ -27,12 +27,15 @@ class Odb(cmd.Cmd):
         self.prev_timestamp = 0
         self.stdoutno = self.default_stdout_size
         self.event_timestamp = 0
+        self.frame_id = None
+
 
     def reset(self):
         print >> self.stdout, 'reset'
         self.lineno = None
         self.stdoutno = self.default_stdout_size
         self.event_timestamp = None
+        self.frame_id = None
 
     def get_current_frame(self):
         return _odb.getCurrentFrame()
@@ -116,9 +119,11 @@ class Odb(cmd.Cmd):
         '''
         self.print_stack_trace()
 
-    def do_history(self, arg):
+    def do_events(self, arg):
         '''
         Lists the events recorded by Odb
+        events n will display the 20 events around timestmap n
+        Successive calls will display 20 more events
         '''
         current_timestamp = self.get_current_timestamp()
         if arg:
@@ -150,13 +155,36 @@ class Odb(cmd.Cmd):
         except KeyboardInterrupt:
             pass
 
-    def do_chistory(self, arg):
+    def do_frames(self, arg):
         '''
         Lists the calls / stack frames recorded by Odb
         '''
-        frames = _odb.getFrames()
-        for f in frames:
-            self.print_stack_entry(f.filename, f.lineno, f.name)
+        current_frame_id = self.get_current_frame_id()
+        if arg:
+            #removed the argument, so that repeated calls work correctly
+            self.lastcmd = 'frames'
+            try:
+                first = int(arg)
+            except:
+                print >> self.stdout, '*** Error in argument:', repr(arg)
+                return
+        elif self.frame_id is None:
+            first = max(1, current_frame_id - 5)
+        else:
+            first = self.frame_id + 1
+
+        last = first + 20
+        try:
+            for f in _odb.getFrames(first,last):
+                s = repr(f.index).rjust(3)
+                if len(s) < 4: s = s + ' '
+                s = s + ' '
+                if f.index == current_frame_id:
+                    s = s + '->'
+                print >> self.stdout, '%s \t <%d>%s:%d'%(s, f.timestamp, f.name, f.lineno)
+                self.frame_id = f.index
+        except KeyboardInterrupt:
+            pass
 
     def do_vhistory(self, arg):
         '''

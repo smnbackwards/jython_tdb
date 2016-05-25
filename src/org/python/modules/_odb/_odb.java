@@ -53,7 +53,7 @@ public class _odb {
             long eventlong = OdbTraceFunction.getEvents().get(timestamp);
             int lineno = OdbEvent.decodeEventLineno(eventlong);
             int frameid = OdbEvent.decodeEventFrameId(eventlong);
-            OdbFrame frame = getFrames().get(frameid);
+            OdbFrame frame = OdbTraceFunction.getFrames().get(frameid);
             OdbEvent.EVENT_TYPE type = OdbEvent.decodeEventType(eventlong);
             return String.format("<%s> \t%s \t%s:%s\n", timestamp, type, frame.filename, lineno);
         }
@@ -78,8 +78,10 @@ public class _odb {
         return types;
     }
 
-    public static List<OdbFrame> getFrames() {
-        return OdbTraceFunction.getFrames();
+    public static List<OdbFrame> getFrames(int startFrameId, int endFrameId){
+        Stack<OdbFrame> frames = OdbTraceFunction.getFrames();
+        int end = Math.min(frames.size(), endFrameId);
+        return frames.subList(startFrameId, end);
     }
 
     public static PyStringMap getCurrentLocals() {
