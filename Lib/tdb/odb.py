@@ -17,14 +17,22 @@ def debug(output):
 
 
 class Odb(cmd.Cmd):
+    default_stdout_size = 10
+
     def __init__(self, stdin=None, stdout=None, skip=None):
         cmd.Cmd.__init__(self, completekey='tab', stdin=stdin, stdout=stdout)
         self.fncache = {}
         self.quit = 0
         self.lineno = None
+        self.prev_timestamp = 0
+        self.stdoutno = self.default_stdout_size
+        self.event_timestamp = 0
 
     def reset(self):
+        print >> self.stdout, 'reset'
         self.lineno = None
+        self.stdoutno = self.default_stdout_size
+        self.event_timestamp = None
 
     def get_current_frame(self):
         return _odb.getCurrentFrame()
@@ -41,10 +49,9 @@ class Odb(cmd.Cmd):
     # region Cmd
 
     def preloop(self):
-        timestamp = _odb.getCurrentTimestamp()
-        output = self.recorded_stdout.get(timestamp)
-        if output :
-            self.stdout.write(output)
+        output = self.recorded_stdout.getBetween(self.prev_timestamp, _odb.getCurrentTimestamp())
+        if output:
+            print >> self.stdout, output
 
         frame = _odb.getCurrentFrame()
         if frame:
@@ -113,8 +120,35 @@ class Odb(cmd.Cmd):
         '''
         Lists the events recorded by Odb
         '''
-        events = _odb.getEvents()
-        print events
+        current_timestamp = self.get_current_timestamp()
+        if arg:
+            #removed the argument, so that repeated calls work correctly
+            self.lastcmd = 'history'
+            try:
+                first = int(arg)
+            except:
+                print >> self.stdout, '*** Error in argument:', repr(arg)
+                return
+        elif self.event_timestamp is None:
+            first = max(1, current_timestamp - 5)
+        else:
+            first = self.event_timestamp + 1
+
+        last = first + 20
+        try:
+            for timestamp in range(first, last + 1):
+                event = _odb.getEvent(timestamp)
+                if not event:
+                    print >> self.stdout, '[EOF]'
+                    break
+                else:
+                    s = ''
+                    if timestamp == current_timestamp:
+                        s = '->'
+                    print >> self.stdout, s + '\t' + event,
+                    self.event_timestamp = timestamp
+        except KeyboardInterrupt:
+            pass
 
     def do_chistory(self, arg):
         '''
@@ -191,7 +225,7 @@ class Odb(cmd.Cmd):
             for lineno in range(first, last + 1):
                 line = linecache.getline(filename, lineno)  # ,self.curframe.f_globals)
                 if not line:
-                    print >> self.stdout, '[EOF]'
+                    print >> self.stdout, '*** No more events'
                     break
                 else:
                     s = repr(lineno).rjust(3)
@@ -204,12 +238,28 @@ class Odb(cmd.Cmd):
         except KeyboardInterrupt:
             pass
 
+    def do_out(self, args):
+        if self.stdoutno == -1:
+            print >> self.stdout, '*** End of stdout'
+            return
+
+        output = self.recorded_stdout.getLastN(self.get_current_timestamp(), self.stdoutno)
+        if len(output) == 0 :
+            print >> self.stdout, '*** No stdout to display'
+        else :
+            print >> self.stdout, 'Showing previous', len(output), 'stdout values'
+            print >> self.stdout, '\t'+'\t'.join(output)
+            if self.stdoutno > len(output):
+                self.stdoutno = -1
+            else :
+                self.stdoutno += self.default_stdout_size
+
     def do_up(self, arg):
         '''
         Moves up one frame in the call stack
         To see the call stack at the current timestamp use 'where'
         '''
-        _odb.moveUpFrames()
+        self.prev_timestamp = _odb.moveUpFrames()
         return NAVIGATION_COMMAND_FLAG
 
     def do_down(self, arg):
@@ -217,7 +267,7 @@ class Odb(cmd.Cmd):
         Moves down one frame in the call stack
         To see the call stack at the current timestamp use 'where'
         '''
-        _odb.moveDownFrames()
+        self.prev_timestamp = _odb.moveDownFrames()
         return NAVIGATION_COMMAND_FLAG
 
     def do_nextf(self, arg):
@@ -227,7 +277,7 @@ class Odb(cmd.Cmd):
         To see a list of frames use 'chistory'
         To see the current call stack use 'where'
         '''
-        _odb.moveNextFrames()
+        self.prev_timestamp = _odb.moveNextFrames()
         return NAVIGATION_COMMAND_FLAG
 
     def do_prevf(self, arg):
@@ -237,21 +287,21 @@ class Odb(cmd.Cmd):
         To see a list of frames use 'chistory'
         To see the current call stack use 'where'
         '''
-        _odb.movePrevFrames()
+        self.prev_timestamp = _odb.movePrevFrames()
         return NAVIGATION_COMMAND_FLAG
 
     def do_step(self, arg):
         '''
         Steps forward one instruction / timestep
         '''
-        _odb.do_step()
+        self.prev_timestamp = _odb.do_step()
         return NAVIGATION_COMMAND_FLAG
 
     def do_rstep(self, arg):
         '''
         Steps backwards one instruction / timestep
         '''
-        _odb.do_rstep()
+        self.prev_timestamp = _odb.do_rstep()
         return NAVIGATION_COMMAND_FLAG
 
     def do_next(self, arg):
@@ -259,6 +309,7 @@ class Odb(cmd.Cmd):
         Steps forward to the next instruction in the current function OR the return of the current function
         Steps over any function calls
         '''
+        self.prev_timestamp = self.get_current_timestamp() + 1
         _odb.do_next()
         return NAVIGATION_COMMAND_FLAG
 
@@ -267,13 +318,14 @@ class Odb(cmd.Cmd):
         Steps backwards to the next instruction in the current function OR the call of the current function
         Steps over any function calls
         '''
-        _odb.do_rnext()
+        self.prev_timestamp = _odb.do_rnext()
         return NAVIGATION_COMMAND_FLAG
 
     def do_return(self, arg):
         '''
         Steps to the return of the call of the current frame / function
         '''
+        self.prev_timestamp = self.get_current_timestamp()
         _odb.do_return()
         return NAVIGATION_COMMAND_FLAG
 
@@ -293,7 +345,7 @@ class Odb(cmd.Cmd):
         except ValueError:
             print >> self.stdout, "*** The 'jump' command requires a line number."
         else:
-            _odb.do_jump(arg)
+            self.prev_timestamp = _odb.do_jump(arg)
         return NAVIGATION_COMMAND_FLAG
 
     def do_quit(self, arg):
@@ -316,6 +368,7 @@ class Odb(cmd.Cmd):
     do_rs = do_rstep
     do_n = do_next
     do_rn = do_rnext
+    do_o = do_out
 
     # endregion
 

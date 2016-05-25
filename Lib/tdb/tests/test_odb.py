@@ -236,7 +236,6 @@ class OdbExceptionModelTestCase(unittest.TestCase):
 
     def test_events(self):
         def commands_and_asserts_generator(debugger):
-            events = _odb.getEvents()
             types = ['L', 'L', 'L', 'C', 'L', 'L', 'E', 'L', 'L', 'R',
                      'L', 'L', 'C', 'L', 'E', 'R', 'E', 'L', 'L', 'L',
                      'L', 'L', 'L', 'L', 'L', 'L', 'L', 'L', 'E', 'R']

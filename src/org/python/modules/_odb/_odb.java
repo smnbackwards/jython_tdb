@@ -47,17 +47,17 @@ public class _odb {
         OdbTraceFunction.setup();
     }
 
-    public static String getEvents() {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < OdbTraceFunction.getEvents().size(); i++) {
-            long eventlong = OdbTraceFunction.getEvents().get(i);
+    public static String getEvent(int timestamp){
+        LongBigList events = OdbTraceFunction.getEvents();
+        if(timestamp >= 0 && timestamp < events.size() ) {
+            long eventlong = OdbTraceFunction.getEvents().get(timestamp);
             int lineno = OdbEvent.decodeEventLineno(eventlong);
             int frameid = OdbEvent.decodeEventFrameId(eventlong);
             OdbFrame frame = getFrames().get(frameid);
             OdbEvent.EVENT_TYPE type = OdbEvent.decodeEventType(eventlong);
-            sb.append(String.format("<%s> \t%s \t%s:%s", "%s \n", i, type, frame.filename, lineno));
+            return String.format("<%s> \t%s \t%s:%s\n", timestamp, type, frame.filename, lineno);
         }
-        return sb.toString();
+        return null;
     }
 
     public static List<Integer> getLinenos(){
@@ -110,34 +110,33 @@ public class _odb {
         return frame.getLocals(frame.timestamp);
     }
 
-    public static void do_step() {
-        do_jump(getCurrentTimestamp() + 1);
+    public static int do_step() {
+        return do_jump(getCurrentTimestamp() + 1);
     }
 
-    public static void do_rstep() {
-        do_jump(getCurrentTimestamp() - 1);
+    public static int do_rstep() {
+        return do_jump(getCurrentTimestamp() - 1);
     }
 
-    public static void do_return() {
+    public static int do_return() {
         //if I am the return event I am looking for then just step 1
         if (OdbTraceFunction.getCurrentEventType() == OdbEvent.EVENT_TYPE.RETURN) {
-            do_step();
-            return;
+            return do_step();
         }
 
-        do_jump(getCurrentFrame().return_timestamp);
+        return do_jump(getCurrentFrame().return_timestamp);
     }
 
-    public static void do_rreturn() {
+    public static int do_rreturn() {
         OdbFrame frame = getCurrentFrame();
         if (frame.timestamp == getCurrentTimestamp()) {
-            do_rstep();
+            return do_rstep();
         } else {
-            do_jump(frame.timestamp);
+            return do_jump(frame.timestamp);
         }
     }
 
-    public static void do_next() {
+    public static int do_next() {
         OdbFrame frame = getCurrentFrame();
 
         if (OdbTraceFunction.getCurrentEventType() == OdbEvent.EVENT_TYPE.RETURN) {
@@ -151,13 +150,13 @@ public class _odb {
         for (int i = getCurrentTimestamp() + 1; i < events.size(); i++) {
             long eventlong = events.get(i);
             if (OdbEvent.decodeEventFrameId(eventlong) == frameid) {
-                do_jump(i);
-                return;
+                return do_jump(i);
             }
         }
+        return getCurrentTimestamp();
     }
 
-    public static void do_rnext() {
+    public static int do_rnext() {
         OdbFrame frame = getCurrentFrame();
 
         if (OdbTraceFunction.getCurrentEventType() == OdbEvent.EVENT_TYPE.CALL) {
@@ -170,31 +169,33 @@ public class _odb {
         for (int i = getCurrentTimestamp() - 1; i >= 0; i--) {
             long eventlong = events.get(i);
             if (OdbEvent.decodeEventFrameId(eventlong) == frameid) {
-                do_jump(i);
-                return;
+                return do_jump(i);
             }
         }
+        return getCurrentTimestamp();
     }
 
 
-    public static void do_jump(int n) {
+    public static int do_jump(int n) {
         OdbTraceFunction.moveToTimestamp(n);
+        return getCurrentTimestamp();
     }
 
-    public static void moveUpFrames() {
+    public static int moveUpFrames() {
         OdbFrame frame = getCurrentFrame();
         if (frame == null) {
-            return;
+            return getCurrentTimestamp();
         }
         OdbTraceFunction.moveToFrame(frame.parent);
+        return getCurrentTimestamp();
     }
 
-    public static void moveDownFrames() {
+    public static int moveDownFrames() {
         //We don't keep child links and the next frame is not guaranteed to be a child
         //Scan the events log to find a CALL event which has a frame with the current frame as its parent
         OdbFrame frame = getCurrentFrame();
         if (frame == null) {
-            return;
+            return getCurrentTimestamp();
         }
         LongBigList events = OdbTraceFunction.getEvents();
         Stack<OdbFrame> frames = OdbTraceFunction.getFrames();
@@ -212,14 +213,17 @@ public class _odb {
         if (timestamp >= 0) {
             OdbTraceFunction.moveToTimestamp(timestamp);
         }
+        return getCurrentTimestamp();
     }
 
-    public static void moveNextFrames() {
+    public static int moveNextFrames() {
         OdbTraceFunction.moveToFrame(OdbTraceFunction.getCurrentFrameId() + 1);
+        return getCurrentTimestamp();
     }
 
-    public static void movePrevFrames() {
+    public static int movePrevFrames() {
         OdbTraceFunction.moveToFrame(OdbTraceFunction.getCurrentFrameId() - 1);
+        return getCurrentTimestamp();
     }
 
     public static void uncaughtExceptionEvent(PyBaseException exception){
