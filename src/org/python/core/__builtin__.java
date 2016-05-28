@@ -508,6 +508,10 @@ public class __builtin__ {
         return eval(o, null, null);
     }
 
+    public static PyCode evalCompile(String s){
+        return (PyCode)CompileFunction.compile(new PyString(s), "<string>", "eval");
+    }
+
     public static void execfile(String name, PyObject globals, PyObject locals) {
         execfile_flags(name, globals, locals, Py.getCompilerFlags());
     }

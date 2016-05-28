@@ -125,6 +125,41 @@ public class _odb {
         return frame.getLocals(frame.timestamp);
     }
 
+    public static List<String> eval(String cmd){
+        List<String> results = new ArrayList<>();
+        // pre-compile the code to improve performance
+        PyCode code = __builtin__.evalCompile(cmd);
+        OdbFrame frame = getCurrentFrame();
+        int end = frame.return_timestamp;
+        LongBigList events = OdbTraceFunction.getEvents();
+        Stack<OdbFrame> frames = OdbTraceFunction.getFrames();
+        PyObject last_result = null;
+        String pad = "          ";
+        for (int i = frame.timestamp + 1; i < end; i++) {
+            long eventLong = events.get(i);
+            frame = frames.get(OdbEvent.decodeEventFrameId(eventLong));
+            //Call events mean we have a new frame, so skip to the return
+            if(OdbEvent.decodeEventType(eventLong) == OdbEvent.EVENT_TYPE.CALL){
+                i = frame.return_timestamp + 1;
+                continue;
+            }
+
+            try {
+                //Evaluate the code using the locals and globals at the correct time
+                PyObject result = __builtin__.eval(code, getGlobalsAt(i), frame.getLocals(i));
+                if (!result.equals(last_result)) {
+                    last_result = result;
+                    results.add(String.format("<%s> %s : %s", i, pad.substring((int)Math.log10(i)), result.toString()));
+                }
+
+            } catch (Exception e) {
+                //Don't print the exceptions. There are a lot of name errors when variables don't exist
+            }
+
+        }
+        return results;
+    }
+
     public static int do_step() {
         return do_jump(getCurrentTimestamp() + 1);
     }
@@ -271,7 +306,7 @@ public class _odb {
         LongBigList events = OdbTraceFunction.getEvents();
         long eventLong = events.get(startTimestamp);
         int frameId = OdbEvent.decodeEventFrameId(eventLong);
-        String filename = OdbTraceFunction.getFrames().get(frameId).filename;
+        String filename = OdbTraceFunction.getFrames().get(frameId).filename; //TODO continue could change files
         List<Integer> lineNumbers = breakpointManager.getBreakpointLinesForFile(filename);
 
         if(lineNumbers.isEmpty()){
