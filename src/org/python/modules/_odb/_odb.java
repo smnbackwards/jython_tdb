@@ -130,17 +130,24 @@ public class _odb {
         // pre-compile the code to improve performance
         PyCode code = __builtin__.evalCompile(cmd);
         OdbFrame frame = getCurrentFrame();
-        int end = frame.return_timestamp;
         LongBigList events = OdbTraceFunction.getEvents();
         Stack<OdbFrame> frames = OdbTraceFunction.getFrames();
+        String filename = frame.filename;
+        long eventLong = events.get(getCurrentTimestamp());
+        int lineno = OdbEvent.decodeEventLineno(eventLong);
+        int end = frame.return_timestamp;
         PyObject last_result = null;
         String pad = "          ";
         for (int i = frame.timestamp + 1; i < end; i++) {
-            long eventLong = events.get(i);
+            eventLong = events.get(i);
             frame = frames.get(OdbEvent.decodeEventFrameId(eventLong));
             //Call events mean we have a new frame, so skip to the return
-            if(OdbEvent.decodeEventType(eventLong) == OdbEvent.EVENT_TYPE.CALL){
-                i = frame.return_timestamp + 1;
+            if(OdbEvent.decodeEventType(eventLong) == OdbEvent.EVENT_TYPE.CALL
+                    // And this isn't the same function
+                    && !(frame.filename.equals(filename)
+                            && OdbEvent.decodeEventLineno(eventLong) == lineno )
+                    ){
+                i = frame.return_timestamp;
                 continue;
             }
 
