@@ -701,7 +701,7 @@ class Odb(cmd.Cmd):
         locals = globals
 
         _odb.reset()
-        sys.settrace(self.trace_dispatch)
+        sys.setodbtrace(self.trace_dispatch)
         if not isinstance(cmd, types.CodeType):
             cmd = cmd + '\n'
         try:
@@ -712,7 +712,7 @@ class Odb(cmd.Cmd):
             print "Uncaught exception", e
             _odb.uncaughtExceptionEvent(e)
         finally:
-            sys.settrace(None)
+            sys.setodbtrace(None)
             sys.stdout = oldstdout
 
         print "Program has finished, now entering ODB mode"

@@ -185,8 +185,8 @@ public class PyFrame extends PyObject implements Traverseproc {
 
     @ExposedSet(name = "f_trace")
     public void setTrace(PyObject trace) {
-//        tracefunc = new PythonTraceFunction(trace);
-        tracefunc = new OdbTraceFunction(trace);
+        Py.writeError("Frame","f_trace set");
+        tracefunc = new PythonTraceFunction(trace);
     }
 
     @ExposedDelete(name = "f_trace")

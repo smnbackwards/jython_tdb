@@ -516,6 +516,27 @@ class Tpdb(Tbdb):
         except Restart:
             raise ReExecute
 
+    def do_jump(self, arg):
+        if arg :
+            args = arg.split()
+            try:
+                step_to = int(args[0].strip())
+            except ValueError:
+                # something went wrong
+                print >>self.stdout, 'jump argument must be an int >= 0'
+                return
+            if step_to < 0:
+                print >> self.stdout, 'jump %r must be an int >= 0' % step_to
+                return
+            self.set_jump(step_to)
+            if step_to < self.get_ic() :
+                self.re_execute()
+            return 1
+
+
+        else :
+            print >>self.stdout, 'jump requires an instruction count to jump to'
+
     def do_rstep(self, arg):
         if arg :
             args = arg.split()

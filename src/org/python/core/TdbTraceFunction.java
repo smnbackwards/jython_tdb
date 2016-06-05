@@ -1,7 +1,5 @@
 package org.python.core;
 
-import org.python.modules._odb._odb;
-
 import java.util.Stack;
 
 /**
@@ -18,11 +16,6 @@ public class TdbTraceFunction extends PythonTraceFunction {
 
     TdbTraceFunction(PyObject tracefunc) {
         super(tracefunc);
-    }
-
-    public void incInstructionCount(PyFrame frame) {
-        instructionCount += 1;
-//        System.out.println(instructionCount);
     }
 
     public static void resetInstructionCount() {
@@ -58,67 +51,43 @@ public class TdbTraceFunction extends PythonTraceFunction {
                     return null;
                 if (tracefunc == null)
                     return null;
-                PyObject ret = tracefunc;
+                PyObject ret = null;
                 try {
                     ts.tracing = true;
-//                    if (frame.f_code.co_filename.startsWith(Py.getSystemState().path.get(1).toString())) {
-//                        OdbTraceFunction.isEnabled() = false;
-//                        return this;
-//                    }
-//
-//                    if (waitForMainPyFile) {
-//                        if (ts.frame.f_code.co_filename.equals("<string>")) {
-//                            return this;
-//                        }
-//
-//                        if (label.equals("call")) {
-//                            waitForMainPyFile = false;
-//                            OdbTraceFunction.isEnabled() = true;
-//                            return this;
-//                        }
-//                    }
-//
-//
-//                    if (callDepth == 0 && (label.equals("return") || label.equals("exception"))) {
-//                        if(OdbTraceFunction.isEnabled() && label.equals("return")){
-//                            _odb.returnEvent(frame, arg);
-//                        }
-//
-//                        if(OdbTraceFunction.isEnabled() && label.equals("exception")){
-//                            PyTuple t = (PyTuple)arg;
-//                            _odb.exceptionEvent(frame, t.pyget(0), t.pyget(1), t.pyget(2));
-//                        }
-//
-//                        OdbTraceFunction.isEnabled() = false;
-//                        tracefunc = null;
-//                        return null;
-//                    }
-//
-//                    if (label.equals("call")) {
-//                        callDepth++;
-//                        lastCallInstructionCount = instructionCount;
-//                        callReturnMap.push(lastCallInstructionCount);
-//                        _odb.callEvent(frame);
-//                    }
-//                    if (label.equals("return")) {
-//                        lastCallInstructionCount = callReturnMap.pop();
-//                        callDepth--;
-//                        _odb.returnEvent(frame, arg);
-//                    }
-//
-//                    if(label.equals("line")){
-//                        _odb.lineEvent(frame);
-//                    }
-//
-//                    if(label.equals("exception")){
-//                        PyTuple t = (PyTuple)arg;
-//                        _odb.exceptionEvent(frame, t.pyget(0), t.pyget(1), t.pyget(2));
-//                    }
+                    if (frame.f_code.co_filename.startsWith(Py.getSystemState().path.get(1).toString())) {
+                        return this;
+                    }
 
-//                    isTracing = true;
-//                    ret = tracefunc.__call__(frame, new PyString(label), arg);
-//                    incInstructionCount(frame);
-//                    isTracing = false;
+                    if (waitForMainPyFile) {
+                        if (ts.frame.f_code.co_filename.equals("<string>")) {
+                            return this;
+                        }
+
+                        if (label.equals("call")) {
+                            waitForMainPyFile = false;
+                            return this;
+                        }
+                    }
+
+                    if (callDepth == 0 && label.equals("return")) {
+                        tracefunc = null;
+                        return null;
+                    }
+
+                    if (label.equals("call")) {
+                        callDepth++;
+                        lastCallInstructionCount = instructionCount;
+                        callReturnMap.push(lastCallInstructionCount);
+                    }
+                    if (label.equals("return")) {
+                        lastCallInstructionCount = callReturnMap.pop();
+                        callDepth--;
+                    }
+
+                    isTracing = true;
+                    ret = tracefunc.__call__(frame, new PyString(label), arg);
+                    instructionCount++;
+                    isTracing = false;
                 } catch (PyException exc) {
                     frame.tracefunc = null;
                     ts.tracefunc = null;

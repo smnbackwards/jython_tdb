@@ -63,7 +63,7 @@ class Tbdb:
 
     def trace_start(self, frame, event, arg):
         self.botframe = frame
-        sys.settrace(self.trace_dispatch)
+        sys.settdbtrace(self.trace_dispatch)
         return self.trace_dispatch(frame,event,arg)
 
     def trace_dispatch(self, frame, event, arg):
@@ -81,7 +81,7 @@ class Tbdb:
         elif event == 'return':
             self.dispatch_return(frame, ic, depth, arg)
             if self.get_depth() == 0 :
-                sys.settrace(None)
+                sys.settdbtrace(None)
                 return None
         elif event == 'exception':
             self.dispatch_exception(frame, ic, depth, arg)
@@ -204,6 +204,10 @@ class Tbdb:
     # Derived classes and clients can call the following methods
     # to affect the stepping state.
 
+    def set_jump(self, ic):
+        """Stop at next instruction at any depth"""
+        self._set_stopinfo(ic, -1)
+
     def set_step(self):
         """Stop at next instruction at any depth"""
         self._set_stopinfo(self.get_ic() + 1, -1)
@@ -236,7 +240,7 @@ class Tbdb:
 
     def set_quit(self):
         self.quitting = 1
-        sys.settrace(None)
+        sys.settdbtrace(None)
 
     # Derived classes and clients can call the following methods
     # to manipulate breakpoints.  These methods return an
@@ -390,7 +394,7 @@ class Tbdb:
         if locals is None:
             locals = globals
         self.reset()
-        sys.settrace(self.trace_start)
+        sys.settdbtrace(self.trace_start)
         if not isinstance(cmd, types.CodeType):
             cmd = cmd+'\n'
         try:
@@ -399,4 +403,4 @@ class Tbdb:
             pass
         finally:
             self.quitting = 1
-            sys.settrace(None)
+            sys.settdbtrace(None)
