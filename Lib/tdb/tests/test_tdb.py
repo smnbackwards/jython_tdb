@@ -1,5 +1,6 @@
 import sys
 import unittest
+import fibexecutionmodel
 from tdb import commandlinecontroller, tpdb, tbdb
 from test import test_support
 
@@ -58,6 +59,18 @@ class TestTdb(tpdb.Tpdb):
         if not self.redomode:
             self.instructionsStoppedAt.append(self.get_ic())
             tpdb.Tpdb.interaction(self, frame, traceback)
+
+    def _runscript(self, filename):
+        try:
+            tpdb.Tpdb._runscript(self, filename)
+        except AssertionError:
+            raise
+
+    def get_current_timestamp(self):
+        return self.get_ic()
+
+    def get_current_lineno(self):
+        return self.lineno
 
 
 class PdbTestCase(unittest.TestCase):
@@ -254,9 +267,47 @@ class PdbTestCase(unittest.TestCase):
                        + ['continue'],
                        range(22) + range(20, -1, -1))
 
+class _GeneratorInput:
+    def initialize_generator(self, generator):
+        self.generator = generator
+
+    def readline(self):
+        line = next(self.generator)
+        print line
+        return line + '\n'
+
+
+import os
+class TestGeneratorInput(object):
+    def initialize_generator(self, generator):
+        self.generator_input.initialize_generator(generator)
+
+    def __enter__(self):
+        self.real_stdin = sys.stdin
+        self.real_stdout = sys.stdout
+        self.generator_input = _GeneratorInput()
+        sys.stdin = self.generator_input
+        sys.stdout = open(os.devnull, 'w')
+        return self
+
+    def __exit__(self, *exc):
+        sys.stdin = self.real_stdin
+        sys.stdout = self.real_stdout
+
+class TdbFibModelTestCase(unittest.TestCase):
+    def _test_fib(self, commands_and_asserts_generator):
+        with TestGeneratorInput() as test_input:
+            debugger = TestTdb()
+            model = fibexecutionmodel.FibExecutionModel(debugger, self)
+            test_input.initialize_generator(commands_and_asserts_generator(model))
+            tpdb.mainloop(debugger, model.filename)
+
+fibexecutionmodel.generate_tests(TdbFibModelTestCase)
+
 def test_main():
     test_support.verbose = 1
-    test_support.run_unittest(PdbTestCase)
+    test_support.run_unittest(PdbTestCase,
+                              TdbFibModelTestCase)
 
 
 if __name__ == '__main__':

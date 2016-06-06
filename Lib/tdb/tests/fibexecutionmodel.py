@@ -29,38 +29,75 @@ class FibExecutionModel():
             self.return_ic = return_ic
             self.rreturn_ic = rreturn_ic
 
+    # model = [
+    #     ExecutionPoint(1, 0, 1, 0, 23, 0),
+    #     ExecutionPoint(5, 0, 22, 0, 23, 0),
+    #     ExecutionPoint(1, 1, 3, 1, 21, 1),  # fib(3) returns at 21
+    #     ExecutionPoint(2, 1, 4, 2, 21, 2),
+    #     ExecutionPoint(4, 1, 21, 3, 21, 2),
+    #     # 5,
+    #     ExecutionPoint(1, 2, 6, 4, 16, 4),  # fib(2) returns at 16
+    #     ExecutionPoint(2, 2, 7, 5, 16, 5),
+    #     ExecutionPoint(4, 2, 16, 6, 16, 5),
+    #     ExecutionPoint(1, 3, 9, 7, 11, 7),  # fib(1) returns at 11
+    #     ExecutionPoint(2, 3, 10, 8, 11, 8),
+    #     # 10,
+    #     ExecutionPoint(3, 3, 11, 9, 11, 8),
+    #     ExecutionPoint(3, 2, 16, 10, 12, 8),
+    #     ExecutionPoint(1, 3, 13, 7, 15, 11),  # fib(0) returns at 15
+    #     ExecutionPoint(2, 3, 14, 12, 15, 12),
+    #     ExecutionPoint(3, 3, 15, 13, 15, 12),
+    #     # 15,
+    #     ExecutionPoint(3, 2, 16, 14, 16, 12),
+    #     ExecutionPoint(4, 1, 21, 7, 17, 5),
+    #     ExecutionPoint(1, 2, 18, 4, 20, 16),  # fib(1) returns at 20
+    #     ExecutionPoint(2, 2, 19, 17, 20, 17),
+    #     ExecutionPoint(3, 2, 20, 18, 20, 17),
+    #     # 20,
+    #     ExecutionPoint(3, 1, 21, 19, 21, 17),
+    #     ExecutionPoint(4, 0, 22, 4, 22, 2),
+    #     ExecutionPoint(6, 0, 23, 1, 23, 0),
+    #     ExecutionPoint(6, 0, 23, 22, 23, 0),
+    # ]
+
+    # filename = 'examples/fib.py'
+    filename = 'examples/fib3.py'
+
     model = [
-        ExecutionPoint(1, 0, 1, 0, 23, 0),
-        ExecutionPoint(5, 0, 22, 0, 23, 0),
-        ExecutionPoint(1, 1, 3, 1, 21, 1),  # fib(3) returns at 21
-        ExecutionPoint(2, 1, 4, 2, 21, 2),
-        ExecutionPoint(4, 1, 21, 3, 21, 2),
+        ExecutionPoint(1, 0, 1,  0, 27, 0),
+        ExecutionPoint(7, 0, 26, 0, 27, 0),
+        ExecutionPoint(1, 1, 3,  1, 25, 1),
+        ExecutionPoint(2, 1, 4,  2, 25, 2),
+        ExecutionPoint(4, 1, 19, 3, 25, 2),
         # 5,
-        ExecutionPoint(1, 2, 6, 4, 16, 4),  # fib(2) returns at 16
-        ExecutionPoint(2, 2, 7, 5, 16, 5),
-        ExecutionPoint(4, 2, 16, 6, 16, 5),
-        ExecutionPoint(1, 3, 9, 7, 11, 7),  # fib(1) returns at 11
+        ExecutionPoint(1, 2, 6,  4, 18, 4),
+        ExecutionPoint(2, 2, 7,  5, 18, 5),
+        ExecutionPoint(4, 2, 12, 6, 18, 5),
+        ExecutionPoint(1, 3, 9,  7, 11, 7),
         ExecutionPoint(2, 3, 10, 8, 11, 8),
         # 10,
-        ExecutionPoint(3, 3, 11, 9, 11, 8),
-        ExecutionPoint(3, 2, 16, 10, 12, 8),
-        ExecutionPoint(1, 3, 13, 7, 15, 11),  # fib(0) returns at 15
-        ExecutionPoint(2, 3, 14, 12, 15, 12),
-        ExecutionPoint(3, 3, 15, 13, 15, 12),
+        ExecutionPoint(3, 3, 11, 9,  11, 8),
+        ExecutionPoint(3, 2, 12, 10, 12, 8),
+        ExecutionPoint(5, 2, 17, 7,  18, 5),
+        ExecutionPoint(1, 3, 14, 12, 16, 12),
+        ExecutionPoint(2, 3, 15, 13, 16, 13),
         # 15,
-        ExecutionPoint(3, 2, 16, 14, 16, 12),
-        ExecutionPoint(4, 1, 21, 7, 17, 5),
-        ExecutionPoint(1, 2, 18, 4, 20, 16),  # fib(1) returns at 20
-        ExecutionPoint(2, 2, 19, 17, 20, 17),
-        ExecutionPoint(3, 2, 20, 18, 20, 17),
+        ExecutionPoint(3, 3, 16, 14, 16, 13),
+        ExecutionPoint(3, 2, 17, 15, 17, 13),
+        ExecutionPoint(6, 2, 18, 12, 18, 5),
+        ExecutionPoint(6, 1, 19, 17, 19, 5),
+        ExecutionPoint(5, 1, 24, 4,  25, 2),
         # 20,
-        ExecutionPoint(3, 1, 21, 19, 21, 17),
-        ExecutionPoint(4, 0, 22, 4, 22, 2),
-        ExecutionPoint(6, 0, 23, 1, 23, 0),
-        ExecutionPoint(6, 0, 23, 22, 23, 0),
+        ExecutionPoint(1, 2, 21, 19, 23, 19),
+        ExecutionPoint(2, 2, 22, 20, 23, 20),
+        ExecutionPoint(3, 2, 23, 21, 23, 20),
+        ExecutionPoint(3, 1, 24, 22, 24, 20),
+        ExecutionPoint(6, 1, 25, 19, 25, 2),
+        # 25
+        ExecutionPoint(6, 0, 26, 24, 26, 2),
+        ExecutionPoint(8, 0, 27, 1,  27, 0),
+        ExecutionPoint(8, 0, 27, 26, 27, 0),
     ]
-
-    filename = 'examples/fib.py'
 
     def __init__(self, debugger, testcase):
         self.ic = 0
@@ -99,6 +136,7 @@ class FibExecutionModel():
 
     def check_model(self):
         self.check_timestamp()
+        # self.check_lineno()
 
     def check_timestamp(self):
         expected = self.ic

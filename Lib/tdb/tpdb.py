@@ -129,6 +129,8 @@ class Tpdb(Tbdb):
             raise Restart
         elif exc_type == ReExecute:
             raise ReExecute
+        elif exc_type == AssertionError:
+            raise AssertionError(exc_value)
 
         if type(exc_type) == type(''):
             exc_type_name = exc_type
@@ -527,6 +529,8 @@ class Tpdb(Tbdb):
                 return
             if step_to < 0:
                 print >> self.stdout, 'jump %r must be an int >= 0' % step_to
+                return
+            if self.get_ic() == step_to:
                 return
             self.set_jump(step_to)
             if step_to < self.get_ic() :

@@ -21,12 +21,12 @@ public class _tdb {
         return Py.newLong(TdbTraceFunction.getCallDepth());
     }
 
-    public static PyLong get_return_instruction(){
-        return Py.newLong(TdbTraceFunction.getReturnInstruction());
+    public static PyLong get_last_call_instruction(){
+        return Py.newLong(TdbTraceFunction.getLastCallInstructionCount());
     }
 
-    public static PyLong get_last_call_instuction(){
-        return Py.newLong(TdbTraceFunction.getLastCallInstructionCountAtCurrentLevel());
+    public static PyLong get_previous_call_instruction(){
+        return Py.newLong(TdbTraceFunction.getPreviousCallInstructionCount());
     }
 
 }

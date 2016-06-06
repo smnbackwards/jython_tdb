@@ -74,6 +74,7 @@ class Tbdb:
         depth = self.get_depth()
         debug("%s event at %i %i"%(event,ic,depth))
 
+        self.event = event
         if event == 'line':
             self.dispatch_line(frame, ic, depth)
         elif event == 'call':
@@ -88,6 +89,7 @@ class Tbdb:
         else:
             print 'idb: unknown debugging event:', repr(event)
 
+        self.last_event = event
         if self.quitting: raise BdbQuit
 
         return self.trace_dispatch
@@ -124,10 +126,11 @@ class Tbdb:
             return False
 
         if self.stopic >= 0 and ic >= self.stopic :
-            if self.stopdepth == -1 or self.stopdepth == depth :
-                debug("Stop  at %s @ %s True \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth))
-                self.redomode = False
-                return True
+            if self.stopdepth == -1 or self.stopdepth >= depth :
+                if not self.stopevent or self.event == self.stopevent:
+                    debug("Stop  at %s @ %s True \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth))
+                    self.redomode = False
+                    return True
 
         debug("Stop  at %s @ %s False \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth))
         return False
@@ -187,17 +190,19 @@ class Tbdb:
     def get_depth(self):
         return _tdb.call_depth()
 
-    def get_last_call_instuction(self):
-        ic = _tdb.get_last_call_instuction()
+    def get_last_call_instruction(self):
+        ic = _tdb.get_last_call_instruction()
         assert ic >= 0
         return ic
 
+    def get_previous_call_instruction(self):
+        return _tdb.get_previous_call_instruction()
 
-
-    def _set_stopinfo(self, stopic, stopdepth):
+    def _set_stopinfo(self, stopic, stopdepth, stopevent=None):
         debug("Stop info set at %s %s"%(stopic, stopdepth))
         self.stopic = stopic
         self.stopdepth = stopdepth
+        self.stopevent = stopevent
         # make sure the debugger doesn't try to exit since we now want to stop somewhere
         self.quitting = 0
 
@@ -219,8 +224,8 @@ class Tbdb:
     def set_return(self, frame):
         """Stop when returning from the given frame."""
         #if we just executed a Call isntruction, we return up one level
-        offset = self.get_last_call_instuction() == self.get_ic()
-        self._set_stopinfo(self.get_ic() + 1, self.get_depth() - offset)
+        event = None if self.event == 'return' else 'return'
+        self._set_stopinfo(self.get_ic() + 1, self.get_depth(), event)
 
     def set_rstep(self, n):
         if n < 0:
@@ -229,10 +234,14 @@ class Tbdb:
             self._set_stopinfo(n, -1)
 
     def set_rreturn(self):
-        self._set_stopinfo(max(self.get_last_call_instuction() - 1, 0), -1)
+        ic = self.get_ic() - 1 if self.event == 'call' else self.get_previous_call_instruction()
+        self._set_stopinfo(max(ic, 0), -1)
 
     def set_rnext(self):
-        self._set_stopinfo(max(self.get_last_call_instuction() - 1, 0), -1)
+        if self.last_event == 'return':
+            self._set_stopinfo(max(self.get_last_call_instruction() - 1, 0), -1)
+        else :
+            self.set_rstep(-1)
 
     def set_continue(self):
         # Don't stop except at breakpoints or when finished

@@ -34,12 +34,12 @@ public class TdbTraceFunction extends PythonTraceFunction {
         return callDepth;
     }
 
-    public static long getReturnInstruction() {
+    public static long getLastCallInstructionCount() {
         return lastCallInstructionCount;
     }
 
-    public static long getLastCallInstructionCountAtCurrentLevel() {
-        return lastCallInstructionCount;
+    public static long getPreviousCallInstructionCount(){
+        return callReturnMap.size() > 0 ? callReturnMap.peek() : 0;
     }
 
     @Override
@@ -79,15 +79,18 @@ public class TdbTraceFunction extends PythonTraceFunction {
                         lastCallInstructionCount = instructionCount;
                         callReturnMap.push(lastCallInstructionCount);
                     }
-                    if (label.equals("return")) {
-                        lastCallInstructionCount = callReturnMap.pop();
-                        callDepth--;
-                    }
+
 
                     isTracing = true;
                     ret = tracefunc.__call__(frame, new PyString(label), arg);
                     instructionCount++;
                     isTracing = false;
+
+                    if (label.equals("return")) {
+                        lastCallInstructionCount = callReturnMap.pop();
+                        callDepth--;
+                    }
+
                 } catch (PyException exc) {
                     frame.tracefunc = null;
                     ts.tracefunc = null;
