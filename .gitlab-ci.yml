@@ -1,0 +1,11 @@
+stages:
+- build
+- test
+- benchmark
+- deploy
+- cleanup
+
+jython:
+    stage: build
+    script:
+    - ant
