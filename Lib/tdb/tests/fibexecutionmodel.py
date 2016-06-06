@@ -96,7 +96,10 @@ class FibExecutionModel():
         # 25
         ExecutionPoint(6, 0, 26, 24, 26, 2),
         ExecutionPoint(8, 0, 27, 1,  27, 0),
-        ExecutionPoint(8, 0, 27, 26, 27, 0),
+        #dummy last value
+        ExecutionPoint(-1,-1,-1,-1,-1,-1,)
+        #ODB ExecutionPoint(8, 0, 27, 26, 27, 0),
+        #TDB ExecutionPoint(8, 0, 0, 26, 0, 0),
     ]
 
     def __init__(self, debugger, testcase):
@@ -170,7 +173,7 @@ def generate_test(testcaseclass, method, test_name):
 
 
 def generate_tests(testcaseclass):
-    for i in range(len(FibExecutionModel.model)):
+    for i in range(len(FibExecutionModel.model)-1):
         generate_test(testcaseclass, create_test(i, 'step', FibExecutionModel.do_step), 'test_step_%s' % i)
         generate_test(testcaseclass, create_test(i, 'rstep', FibExecutionModel.do_rstep), 'test_rstep_%s' % i)
         generate_test(testcaseclass, create_test(i, 'next', FibExecutionModel.do_next), 'test_next_%s' % i)

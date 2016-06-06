@@ -1,4 +1,7 @@
 import sys
+
+import _tdb
+
 import unittest
 import fibexecutionmodel
 from tdb import commandlinecontroller, tpdb, tbdb
@@ -56,7 +59,7 @@ class TestTdb(tpdb.Tpdb):
         self._user_requested_quit = 1
 
     def interaction(self, frame, traceback):
-        if not self.redomode:
+        if not self.get_redomode():
             self.instructionsStoppedAt.append(self.get_ic())
             tpdb.Tpdb.interaction(self, frame, traceback)
 
@@ -100,6 +103,7 @@ class PdbTestCase(unittest.TestCase):
 
     def _test(self, filename, commands, instructions=None, total_instructions=-1, commands_remaining=-1):
         with TestInput(commands) as ti:
+            _tdb.reset()
             debugger = TestTdb()
             tpdb.mainloop(debugger, filename)
             if instructions:
@@ -297,16 +301,23 @@ class TestGeneratorInput(object):
 class TdbFibModelTestCase(unittest.TestCase):
     def _test_fib(self, commands_and_asserts_generator):
         with TestGeneratorInput() as test_input:
+            _tdb.reset()
             debugger = TestTdb()
             model = fibexecutionmodel.FibExecutionModel(debugger, self)
             test_input.initialize_generator(commands_and_asserts_generator(model))
             tpdb.mainloop(debugger, model.filename)
+            # ensure there is no more input remaining
+            with self.assertRaises(StopIteration):
+                i = next(test_input.generator_input.generator)
+                print 'remaining input:', i
+
 
 fibexecutionmodel.generate_tests(TdbFibModelTestCase)
 
 def test_main():
     test_support.verbose = 1
-    test_support.run_unittest(PdbTestCase,
+    test_support.run_unittest(
+        # PdbTestCase,
                               TdbFibModelTestCase)
 
 

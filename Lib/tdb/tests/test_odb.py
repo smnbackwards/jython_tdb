@@ -300,6 +300,9 @@ class OdbFibModelTestCase(unittest.TestCase):
             model = fibexecutionmodel.FibExecutionModel(debugger, self)
             test_input.initialize_generator(commands_and_asserts_generator(model))
             debugger.run(model.filename)
+            # ensure there is no input remaining
+            with self.assertRaises(StopIteration):
+                next(test_input.generator_input.generator)
 
 
 fibexecutionmodel.generate_tests(OdbFibModelTestCase)

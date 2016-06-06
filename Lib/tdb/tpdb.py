@@ -144,7 +144,7 @@ class Tpdb(Tbdb):
 
     def interaction(self, frame, traceback):
         #if we have set a stop count and the current count is before it, then we are in replay mode
-        if self.redomode :
+        if self.get_redomode() :
             return False
 
         self.setup(frame, traceback)
@@ -512,7 +512,7 @@ class Tpdb(Tbdb):
 
     #region Reverse Navigation commands
     def re_execute(self):
-        print "Stepping back to instruction", self.stopic
+        print "Stepping back to instruction", -1 #todo self.stopic
         try:
             self.do_restart(None)
         except Restart:
@@ -542,21 +542,7 @@ class Tpdb(Tbdb):
             print >>self.stdout, 'jump requires an instruction count to jump to'
 
     def do_rstep(self, arg):
-        if arg :
-            args = arg.split()
-            try:
-                step_to = int(args[0].strip())
-            except ValueError:
-                # something went wrong
-                print >>self.stdout, 'Rstep argument must be an int >= 0'
-                return
-            if step_to <= 0:
-                print >> self.stdout, 'Rstep %r must be an int >= 0' % step_to
-                return
-        else :
-            step_to = - 1
-
-        self.set_rstep(step_to)
+        self.set_rstep()
         self.re_execute()
 
     def do_rreturn(self, arg):
@@ -980,7 +966,7 @@ def mainloop(tpdb, mainpyfile):
             print "The program finished after executing", tpdb.get_ic() , "instructions and will be restarted"
         except ReExecute:
             print "Re-executing from beginning"
-            tpdb.redomode = True
+            tpdb.enable_redomode()
             pass
         except Restart:
             print "Restarting", mainpyfile, "with arguments:"
@@ -997,7 +983,6 @@ def mainloop(tpdb, mainpyfile):
             tpdb.interaction(None, t)
             print "Post mortem debugger finished. The " + mainpyfile + \
                   " will be restarted"
-
 
 def main():
     if not sys.argv[1:] or sys.argv[1] in ("--help", "-h"):

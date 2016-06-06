@@ -28,16 +28,6 @@ class Tbdb:
         self.skip = set(skip) if skip else None
         self.breaks = {}
         self.fncache = {}
-
-        # The instruction count to stop at
-        self.stopic = -1
-
-        #The call depth to stop at
-        self.stopdepth = -1
-
-        #Whether the debugger is re-executing
-        self.redomode = False
-
         self.quitting = 0
 
 
@@ -54,7 +44,7 @@ class Tbdb:
     def reset(self):
         import linecache
         linecache.checkcache()
-        if not self.redomode:
+        if not _tdb.get_redomode():
             # Reset the stop values to stop at instruction count 0 at any depth
             # If we are re-executing values have already been set
             self._set_stopinfo(0, -1)
@@ -74,41 +64,33 @@ class Tbdb:
         depth = self.get_depth()
         debug("%s event at %i %i"%(event,ic,depth))
 
-        self.event = event
         if event == 'line':
             self.dispatch_line(frame, ic, depth)
         elif event == 'call':
             self.dispatch_call(frame, ic, depth, arg)
         elif event == 'return':
             self.dispatch_return(frame, ic, depth, arg)
-            if self.get_depth() == 0 :
-                sys.settdbtrace(None)
-                return None
         elif event == 'exception':
             self.dispatch_exception(frame, ic, depth, arg)
         else:
             print 'idb: unknown debugging event:', repr(event)
 
-        self.last_event = event
         if self.quitting: raise BdbQuit
 
         return self.trace_dispatch
 
     def dispatch_line(self, frame, ic, depth):
-        if self.stop_here(frame, ic, depth) or self.break_here(frame):
-            self.user_line(frame, ic, depth)
+        self.user_line(frame, ic, depth)
+        #todo breakpoints if self.break_here(frame):
 
     def dispatch_call(self, frame, ic, depth, arg):
-        if self.stop_here(frame,ic,depth):
-            self.user_call(frame, ic, depth, arg)
+        self.user_call(frame, ic, depth, arg)
 
     def dispatch_return(self, frame, ic, depth, arg):
-        if self.stop_here(frame, ic, depth):
-            self.user_return(frame, ic, depth, arg)
+        self.user_return(frame, ic, depth, arg)
 
     def dispatch_exception(self, frame, ic, depth, arg):
-        if self.stop_here(frame, ic, depth):
-            self.user_exception(frame, ic, depth, arg)
+        self.user_exception(frame, ic, depth, arg)
 
     # Normally derived classes don't override the following
     # methods, but they may if they want to redefine the
@@ -118,21 +100,6 @@ class Tbdb:
         for pattern in self.skip:
             if fnmatch.fnmatch(module_name, pattern):
                 return True
-        return False
-
-    def stop_here(self, frame, ic, depth):
-        if self.skip and \
-                self.is_skipped_module(frame.f_globals.get('__name__')):
-            return False
-
-        if self.stopic >= 0 and ic >= self.stopic :
-            if self.stopdepth == -1 or self.stopdepth >= depth :
-                if not self.stopevent or self.event == self.stopevent:
-                    debug("Stop  at %s @ %s True \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth))
-                    self.redomode = False
-                    return True
-
-        debug("Stop  at %s @ %s False \t Actual: %s @ %s" % (self.stopic, self.stopdepth, ic, depth))
         return False
 
     def break_here(self, frame):
@@ -198,11 +165,15 @@ class Tbdb:
     def get_previous_call_instruction(self):
         return _tdb.get_previous_call_instruction()
 
+    def get_redomode(self):
+        return _tdb.get_redomode()
+
+    def enable_redomode(self):
+        _tdb.set_redomode(True)
+
     def _set_stopinfo(self, stopic, stopdepth, stopevent=None):
+        _tdb.set_stop_info(stopic,stopdepth,stopevent)
         debug("Stop info set at %s %s"%(stopic, stopdepth))
-        self.stopic = stopic
-        self.stopdepth = stopdepth
-        self.stopevent = stopevent
         # make sure the debugger doesn't try to exit since we now want to stop somewhere
         self.quitting = 0
 
@@ -224,24 +195,21 @@ class Tbdb:
     def set_return(self, frame):
         """Stop when returning from the given frame."""
         #if we just executed a Call isntruction, we return up one level
-        event = None if self.event == 'return' else 'return'
+        event = None if _tdb.get_event() == 'return' else 'return'
         self._set_stopinfo(self.get_ic() + 1, self.get_depth(), event)
 
-    def set_rstep(self, n):
-        if n < 0:
-            self._set_stopinfo(self.get_ic() + n, -1)
-        else :
-            self._set_stopinfo(n, -1)
+    def set_rstep(self):
+        self._set_stopinfo(max(0,self.get_ic() -1), -1)
 
     def set_rreturn(self):
-        ic = self.get_ic() - 1 if self.event == 'call' else self.get_previous_call_instruction()
+        ic = self.get_ic() - 1 if _tdb.get_event() == 'call' else self.get_previous_call_instruction()
         self._set_stopinfo(max(ic, 0), -1)
 
     def set_rnext(self):
-        if self.last_event == 'return':
+        if _tdb.get_last_event() == 'return':
             self._set_stopinfo(max(self.get_last_call_instruction() - 1, 0), -1)
         else :
-            self.set_rstep(-1)
+            self.set_rstep()
 
     def set_continue(self):
         # Don't stop except at breakpoints or when finished

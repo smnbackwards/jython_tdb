@@ -8,14 +8,35 @@ import java.util.Stack;
 public class TdbTraceFunction extends PythonTraceFunction {
     private static long instructionCount = 0;
     private static long callDepth = 0;
-    public static boolean isTracing = false;
     public static Stack<Long> callReturnMap = new Stack<>();
     public static long lastCallInstructionCount = 0;
     public static String file;
     public static boolean waitForMainPyFile = true;
 
+    public static int stopIc = 0;
+    public static int stopDepth = -1;
+    public static String stopEvent = null;
+    public static boolean redoMode = false;
+    public static String event = null;
+    public static String lastEvent = null;
+
     TdbTraceFunction(PyObject tracefunc) {
         super(tracefunc);
+    }
+
+    public static void reset(){
+        instructionCount = 0;
+        callDepth = 0;
+        callReturnMap = new Stack<>();
+        lastCallInstructionCount = 0;
+        waitForMainPyFile = true;
+
+        stopIc = 0;
+        stopDepth = -1;
+        stopEvent = null;
+        redoMode = false;
+        event = null;
+        lastEvent = null;
     }
 
     public static void resetInstructionCount() {
@@ -69,10 +90,6 @@ public class TdbTraceFunction extends PythonTraceFunction {
                         }
                     }
 
-                    if (callDepth == 0 && label.equals("return")) {
-                        tracefunc = null;
-                        return null;
-                    }
 
                     if (label.equals("call")) {
                         callDepth++;
@@ -80,13 +97,26 @@ public class TdbTraceFunction extends PythonTraceFunction {
                         callReturnMap.push(lastCallInstructionCount);
                     }
 
+                    event = label;
+                    if (stopIc >= 0 && instructionCount >= stopIc) {
+                        if (stopDepth == -1 || stopDepth >= callDepth) {
+                            if (stopEvent == null || label.equals(stopEvent)) {
+                                redoMode = false;
+                                ret = tracefunc.__call__(frame, new PyString(label), arg);
+                            }
+                        }
+                    }
+                    ret = tracefunc;
+                    lastEvent = label;
 
-                    isTracing = true;
-                    ret = tracefunc.__call__(frame, new PyString(label), arg);
                     instructionCount++;
-                    isTracing = false;
-
                     if (label.equals("return")) {
+                        if (callDepth == 0) {
+                            tracefunc = null;
+                            ts.tracefunc = null;
+                            return null;
+                        }
+
                         lastCallInstructionCount = callReturnMap.pop();
                         callDepth--;
                     }
