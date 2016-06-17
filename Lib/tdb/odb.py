@@ -29,6 +29,10 @@ class Odb(cmd.Cmd):
         self.event_timestamp = 0
         self.frame_id = None
 
+        import socket
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.connect(('localhost', 8089))
+
 
     def reset(self):
         self.lineno = None
@@ -76,6 +80,9 @@ class Odb(cmd.Cmd):
             self.print_stack_entry(frame.filename, event_lineno, frame.name, frame.return_value)
 
         self.prompt = "(Odb)<%s>" % _odb.getCurrentTimestamp();
+        import struct
+        packet = struct.pack("!i", _odb.getCurrentTimestamp())
+        self.socket.send(packet)
 
     def postcmd(self, stop, line):
         return stop or self.quit
@@ -407,6 +414,11 @@ class Odb(cmd.Cmd):
             print >> self.stdout, "*** The 'jump' command requires a line number."
         else:
             self.prev_timestamp = _odb.do_jump(arg)
+
+            import struct
+            packet = struct.pack("!i", -1)
+            self.socket.send(packet)
+
         return NAVIGATION_COMMAND_FLAG
 
     def do_continue(self, arg):
