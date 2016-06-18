@@ -80,11 +80,12 @@ class Odb(cmd.Cmd):
             self.print_stack_entry(frame.filename, event_lineno, frame.name, frame.return_value)
 
         self.prompt = "(Odb)<%s>" % _odb.getCurrentTimestamp();
-        # import struct
-        # packet = struct.pack("!i", _odb.getCurrentTimestamp())
-        # self.socket.send(packet)
-        self.godb.stdin.write('%s\n'%_odb.getCurrentTimestamp())
-        self.godb.stdin.flush()
+
+        try:
+            self.godb.stdin.write('%s\n'%_odb.getCurrentTimestamp())
+            self.godb.stdin.flush()
+        except:
+            pass
 
     def postcmd(self, stop, line):
         return stop or self.quit
@@ -420,8 +421,11 @@ class Odb(cmd.Cmd):
             # import struct
             # packet = struct.pack("!i", -1)
             # self.socket.send(packet)
-            self.godb.stdin.write('-1')
-            self.godb.stdin.flush()
+            try:
+                self.godb.stdin.write('-1\n')
+                self.godb.stdin.flush()
+            except:
+                pass
 
         return NAVIGATION_COMMAND_FLAG
 
@@ -714,6 +718,8 @@ class Odb(cmd.Cmd):
         import subprocess
         self.godb = subprocess.Popen('python godb.py '+filename,
                                 stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
                                 shell=True,
                                 bufsize=0)
 
@@ -743,6 +749,8 @@ class Odb(cmd.Cmd):
         self.control_loop()
         _odb.reset()
         _odb.cleanupGlobals(__main__.__dict__)
+
+        self.godb.kill()
 
 
 def main():

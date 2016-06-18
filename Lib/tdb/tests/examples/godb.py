@@ -3,6 +3,7 @@ usage: python executionpath.py file.py
 '''
 import linecache
 import sys
+import time
 
 import matplotlib.pyplot as plt
 import matplotlib.path as mpath
@@ -146,8 +147,6 @@ if __name__ == '__main__':
         execfile(file_name)
     finally:
         sys.settrace(None)
-    for e in events:
-        print e
 
     events = events[1:]
 
@@ -156,38 +155,30 @@ if __name__ == '__main__':
     plot_graph(events)
     plt.show()
     plt.draw()
-    plt.pause(0.05)
-    x = 0
-    y = 0
-    arrows = []
 
-    import socket
-    import struct
+    def update_gui():
+        x = 0
+        y = 0
+        arrows = []
+        while True:
+            time.sleep(0.05)
+            i = int(input())
 
+            if i == -1:
+                for l,h in arrows:
+                    l.remove()
+                    h.remove()
+                arrows = []
+                continue
 
-    # serversocket = socket.socket()
-    # serversocket.bind(('localhost', 8089))
-    # serversocket.listen(5) # become a server socket, maximum 5 connections
-    #
-    # connection, address = serversocket.accept()
+            ic,depth,event,line,linenumber = events[i]
+            arrows.append(addArrow(x,y, ic, depth))
+            x = ic
+            y = depth
+
+    from threading import Thread
+    t = Thread(target=update_gui)
+    t.start()
+
     while True:
-        # t = connection.recv(4)
-        # t = struct.unpack("!i", t)[0]
-        # i = int(t)
-
-        i = int(input())
-
-        if i == -1:
-            for l,h in arrows:
-                l.remove()
-                h.remove()
-            arrows = []
-            plt.pause(0.05)
-            continue
-        print i
-
-        ic,depth,event,line,linenumber = events[i]
-        arrows.append(addArrow(x,y, ic, depth))
-        x = ic
-        y = depth
-        plt.pause(0.05)
+        plt.pause(0.1)
