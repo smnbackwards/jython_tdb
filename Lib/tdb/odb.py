@@ -29,9 +29,9 @@ class Odb(cmd.Cmd):
         self.event_timestamp = 0
         self.frame_id = None
 
-        import socket
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect(('localhost', 8089))
+        # import socket
+        # self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # self.socket.connect(('localhost', 8089))
 
 
     def reset(self):
@@ -80,9 +80,11 @@ class Odb(cmd.Cmd):
             self.print_stack_entry(frame.filename, event_lineno, frame.name, frame.return_value)
 
         self.prompt = "(Odb)<%s>" % _odb.getCurrentTimestamp();
-        import struct
-        packet = struct.pack("!i", _odb.getCurrentTimestamp())
-        self.socket.send(packet)
+        # import struct
+        # packet = struct.pack("!i", _odb.getCurrentTimestamp())
+        # self.socket.send(packet)
+        self.godb.stdin.write('%s\n'%_odb.getCurrentTimestamp())
+        self.godb.stdin.flush()
 
     def postcmd(self, stop, line):
         return stop or self.quit
@@ -415,9 +417,11 @@ class Odb(cmd.Cmd):
         else:
             self.prev_timestamp = _odb.do_jump(arg)
 
-            import struct
-            packet = struct.pack("!i", -1)
-            self.socket.send(packet)
+            # import struct
+            # packet = struct.pack("!i", -1)
+            # self.socket.send(packet)
+            self.godb.stdin.write('-1')
+            self.godb.stdin.flush()
 
         return NAVIGATION_COMMAND_FLAG
 
@@ -706,6 +710,13 @@ class Odb(cmd.Cmd):
         # avoid stopping before we reach the main script (see user_line and
         # user_call for details).
         self.mainpyfile = self.canonic(filename)
+
+        import subprocess
+        self.godb = subprocess.Popen('python godb.py '+filename,
+                                stdin=subprocess.PIPE,
+                                shell=True,
+                                bufsize=0)
+
         # self._user_requested_quit = 0
         cmd = 'execfile(%r)' % filename
 

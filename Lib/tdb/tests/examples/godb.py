@@ -165,15 +165,17 @@ if __name__ == '__main__':
     import struct
 
 
-    serversocket = socket.socket()
-    serversocket.bind(('localhost', 8089))
-    serversocket.listen(5) # become a server socket, maximum 5 connections
-
-    connection, address = serversocket.accept()
+    # serversocket = socket.socket()
+    # serversocket.bind(('localhost', 8089))
+    # serversocket.listen(5) # become a server socket, maximum 5 connections
+    #
+    # connection, address = serversocket.accept()
     while True:
-        t = connection.recv(4)
-        t = struct.unpack("!i", t)[0]
-        i = int(t)
+        # t = connection.recv(4)
+        # t = struct.unpack("!i", t)[0]
+        # i = int(t)
+
+        i = int(input())
 
         if i == -1:
             for l,h in arrows:
