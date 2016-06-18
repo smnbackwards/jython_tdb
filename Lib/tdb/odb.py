@@ -418,16 +418,14 @@ class Odb(cmd.Cmd):
         else:
             self.prev_timestamp = _odb.do_jump(arg)
 
-            # import struct
-            # packet = struct.pack("!i", -1)
-            # self.socket.send(packet)
-            try:
-                self.godb.stdin.write('-1\n')
-                self.godb.stdin.flush()
-            except:
-                pass
-
         return NAVIGATION_COMMAND_FLAG
+
+    def do_cg(self, arg):
+        try:
+            self.godb.stdin.write('-1\n')
+            self.godb.stdin.flush()
+        except:
+            pass
 
     def do_continue(self, arg):
         '''

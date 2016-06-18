@@ -14,7 +14,7 @@ import numpy as np
 events = []
 
 depth = 0
-ic = 0
+ic = -1
 l = None
 h = None
 
@@ -131,7 +131,7 @@ def addArrow(x1,y1,x2,y2, reverse=False):
 
 def addMarker(x,y):
     ax = plt.gca()
-    return ax.plot([x],[y], color='#1CADE4', marker='o', markersize=16, zorder=0)
+    return ax.plot([x],[y], color='#1CADE4', marker='o', markersize=16, zorder=0)[0]
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -157,8 +157,8 @@ if __name__ == '__main__':
     plt.draw()
 
     def update_gui():
-        x = 0
-        y = 0
+        x,y = -1, 0
+        marker = None
         arrows = []
         while True:
             time.sleep(0.05)
@@ -172,9 +172,13 @@ if __name__ == '__main__':
                 continue
 
             ic,depth,event,line,linenumber = events[i]
-            arrows.append(addArrow(x,y, ic, depth))
-            x = ic
-            y = depth
+            if not x == ic or not y == depth :
+                arrows.append(addArrow(x,y, ic, depth))
+                x = ic
+                y = depth
+                if marker:
+                    marker.remove()
+                marker = addMarker(x,y)
 
     from threading import Thread
     t = Thread(target=update_gui)
