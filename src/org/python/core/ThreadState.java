@@ -31,7 +31,7 @@ public class ThreadState {
 
     public boolean enterRepr(PyObject obj) {
         if (reprStack == null) {
-            reprStack = new PyList(new PyObject[] {obj});
+            reprStack = new PyList(new PyObject[] {obj}, true);
             return true;
         }
         for (int i = reprStack.size() - 1; i >= 0; i--) {

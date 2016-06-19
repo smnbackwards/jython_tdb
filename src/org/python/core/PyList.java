@@ -63,6 +63,11 @@ public class PyList extends PySequenceList implements List {
         this(TYPE, elements);
     }
 
+    public PyList(PyObject[] elements, boolean NO_HISTORY) {
+        super(TYPE);
+        list = new ArrayList<>(Arrays.asList(elements));
+    }
+
     public PyList(Collection c) {
         this(TYPE, c);
     }
